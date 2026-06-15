@@ -1,0 +1,7 @@
+*.pyc
+/src
+/dataset
+data/all_cleaned_text.md
+data/bookcorpus.txt
+notebooks/bookcorpus_train.jsonl
+/output

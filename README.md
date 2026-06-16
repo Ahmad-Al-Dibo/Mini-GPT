@@ -4,7 +4,38 @@ A compact GPT-style language model built as an educational project to understand
 
 MiniGPT focuses on simplicity, readability, and reproducibility while demonstrating how autoregressive language models learn to generate text. The project is intended for students, developers, and researchers who want to explore the internal mechanics of Transformer-based language models without the complexity of production-scale systems.
 
+# Table of Contents
+
+* [Features](#features)
+* [Overview](#overview)
+* [Architecture](#architecture)
+* [Model Architecture](#model-architecture)
+* [Available Models](#available-models)
+* [Model Downloads](#model-downloads)
+* [Training Configurations](#training-configurations)
+
+  * [MiniGPT Configuration](#minigpt-configuration)
+  * [MediumGPT Configuration](#mediumgpt-configuration)
+  * [MediumGPT-T Configuration](#mediumgpt-t-configuration)
+* [Architecture Comparison](#architecture-comparison)
+* [Example Generation](#example-generation)
+* [Evaluation Report](#evaluation-report)
+
+  * [Summary](#summary)
+  * [Metrics](#metrics)
+  * [Analysis](#analysis)
+* [Project Structure](#project-structure)
+* [Installation](#installation)
+* [Training](#training)
+* [Text Generation](#text-generation)
+* [Roadmap](#roadmap)
+* [Reproducibility](#reproducibility)
+* [Limitations](#limitations)
+* [Purpose](#purpose)
+* [References](#references)
+
 ---
+
 
 # Features
 
@@ -113,105 +144,110 @@ The following configurations were used to train the released checkpoints.
 ## MiniGPT Configuration
 
 ```python
-Config(
-    embed_dim=64,
-    block_size=64,
-
-    num_blocks=2,
-    num_heads=2,
-    dropout=0.1,
-
-    batch_size=32,
-    epochs=10,
-
-    learning_rate=3e-4,
-    weight_decay=0.01,
-    grad_clip=1.0,
-
-    tokenizer_type="sentencepiece",
-    sentencepiece_model_type="bpe",
-    max_vocab=16000,
-
-    validation_split=0.1,
-
-    early_stopping_patience=2,
-    restore_best_model=True,
-
-    seed=42
-)
+{'embed_dim': 64,
+ 'block_size': 128,
+ 'batch_size': 32,
+ 'epochs': 10,
+ 'learning_rate': 0.00025,
+ 'weight_decay': 0.1,
+ 'dropout': 0.1,
+ 'grad_clip': 1.0,
+ 'num_blocks': 3,
+ 'model_path': '/content/drive/MyDrive/Colab Notebooks/output/MiniGPT.pth',
+ 'data_path': '/content/drive/MyDrive/Colab Notebooks/data/bookcorpus.txt',
+ 'domain_data_path': None,
+ 'domain_data_repeats': 1,
+ 'tokenizer_type': 'sentencepiece',
+ 'sentencepiece_model_type': 'bpe',
+ 'sentencepiece_character_coverage': 1.0,
+ 'max_vocab': 10000,
+ 'max_data_size': 1000000,
+ 'device': 'cuda',
+ 'validation_split': 0.1,
+ 'early_stopping_patience': 2,
+ 'early_stopping_min_delta': 0.0001,
+ 'restore_best_model': True,
+ 'seed': 42,
+ 'diagnostic_top_k': 5,
+ 'concept_benchmark_top_k': 10,
+ 'diagnostic_sample_tokens': 60,
+ 'tokenizer_rare_threshold': 2,
+ 'training_log_interval': 50,
+ 'run_long_context_evaluation': False,
+ 'long_context_block_sizes': [32, 64, 128]}
 ```
 
 ## MediumGPT Configuration
 
 ```python
-Config(
-    embed_dim=64,
-    num_blocks=3,
-    num_heads=4,
-    dropout=0.1,
-    block_size=128,
-
-    batch_size=32,
-    grad_accum_steps=1,
-    epochs=10,
-
-    learning_rate=2.5e-4,
-    weight_decay=0.1,
-    grad_clip=1.0,
-
-    max_data_size=2_500_000,
-    validation_split=0.1,
-
-    tokenizer_type="sentencepiece",
-    sentencepiece_model_type="bpe",
-    sentencepiece_character_coverage=1.0,
-    max_vocab=20000,
-    tokenizer_rare_threshold=2,
-
-    early_stopping_patience=2,
-    early_stopping_min_delta=1e-4,
-    restore_best_model=True,
-
-    seed=42,
-    training_log_interval=50
-)
+{'embed_dim': 64,
+ 'block_size': 128,
+ 'batch_size': 32,
+ 'epochs': 10,
+ 'learning_rate': 0.00025,
+ 'weight_decay': 0.1,
+ 'dropout': 0.1,
+ 'grad_clip': 1.0,
+ 'num_blocks': 3,
+ 'model_path': '/content/drive/MyDrive/Colab Notebooks/output/MeduimGPT.pth',
+ 'data_path': '/content/drive/MyDrive/Colab Notebooks/data/bookcorpus.txt',
+ 'domain_data_path': None,
+ 'domain_data_repeats': 1,
+ 'tokenizer_type': 'sentencepiece',
+ 'sentencepiece_model_type': 'bpe',
+ 'sentencepiece_character_coverage': 1.0,
+ 'max_vocab': 20000,
+ 'max_data_size': 2500000,
+ 'device': 'cuda',
+ 'validation_split': 0.1,
+ 'early_stopping_patience': 2,
+ 'early_stopping_min_delta': 0.0001,
+ 'restore_best_model': True,
+ 'seed': 42,
+ 'diagnostic_top_k': 5,
+ 'concept_benchmark_top_k': 10,
+ 'diagnostic_sample_tokens': 60,
+ 'tokenizer_rare_threshold': 2,
+ 'training_log_interval': 50,
+ 'run_long_context_evaluation': False,
+ 'long_context_block_sizes': [32, 64, 128]}
 ```
 
 
 ## MediumGPT-T Configuration
 
 ```python
-Config(
-    embed_dim=82,
-    num_blocks=4,
-    num_heads=4,
-    dropout=0.1,
-    block_size=128,
-
-    batch_size=32,
-    grad_accum_steps=1,
-    epochs=10,
-
-    learning_rate=2.5e-4,
-    weight_decay=0.1,
-    grad_clip=1.0,
-
-    max_data_size=3_700_000,
-    validation_split=0.1,
-
-    tokenizer_type="sentencepiece",
-    sentencepiece_model_type="bpe",
-    sentencepiece_character_coverage=1.0,
-    max_vocab=20000,
-    tokenizer_rare_threshold=2,
-
-    early_stopping_patience=2,
-    early_stopping_min_delta=1e-4,
-    restore_best_model=True,
-
-    seed=42,
-    training_log_interval=50
-)
+{'embed_dim': 82,
+ 'block_size': 128,
+ 'batch_size': 32,
+ 'epochs': 10,
+ 'learning_rate': 0.00025,
+ 'weight_decay': 0.1,
+ 'dropout': 0.1,
+ 'grad_clip': 1.0,
+ 'num_blocks': 4,
+ 'model_path': '/content/drive/MyDrive/Colab Notebooks/output/Meduim-T.pth',
+ 'data_path': '/content/drive/MyDrive/Colab Notebooks/data/bookcorpus.txt',
+ 'domain_data_path': None,
+ 'domain_data_repeats': 1,
+ 'tokenizer_type': 'sentencepiece',
+ 'sentencepiece_model_type': 'bpe',
+ 'sentencepiece_character_coverage': 1.0,
+ 'max_vocab': 20000,
+ 'max_data_size': 3700000,
+ 'device': 'cuda',
+ 'validation_split': 0.1,
+ 'early_stopping_patience': 2,
+ 'early_stopping_min_delta': 0.0001,
+ 'restore_best_model': True,
+ 'seed': 42,
+ 'diagnostic_top_k': 5,
+ 'concept_benchmark_top_k': 10,
+ 'diagnostic_sample_tokens': 60,
+ 'tokenizer_rare_threshold': 2,
+ 'training_log_interval': 50,
+ 'run_long_context_evaluation': False,
+ 'long_context_block_sizes': [32, 64, 128]}
 ```
 
 ---
@@ -221,9 +257,9 @@ Config(
 | Property            | MiniGPT           | MediumGPT         | Medium-T          |
 | ------------------- | ----------------- | ----------------- | ----------------- |
 | Parameters          | 1.44M             | 2.73M             | 3.63M             |
-| Embedding Dimension | 64                | 64                | 64                |
+| Embedding Dimension | 64                | 64                | 82                |
 | Transformer Blocks  | 2                 | 3                 | 4                 |
-| Attention Heads     | 2                 | 4                 | 4                 |
+| max-token           | 2                 | 4                 | 4                 |
 | Context Window      | 64                | 128               | 128               |
 | Vocabulary Size     | 16K               | 20K               | 20K               |
 | Tokenizer           | SentencePiece BPE | SentencePiece BPE | SentencePiece BPE |
@@ -449,6 +485,5 @@ MiniGPT is not intended to compete with production-scale systems such as GPT, Cl
 1. Vaswani et al. (2017) — Attention Is All You Need
 2. Brown et al. (2020) — Language Models are Few-Shot Learners
 3. SentencePiece: A Simple and Language Independent Subword Tokenizer
-4. PyTorch Documentation
-5. Transformer Architecture Research Literature
-6. GPT Language Model Research
+4. Transformer Architecture Research Literature
+5. GPT Language Model Research

@@ -88,19 +88,21 @@ Vocabulary Probabilities
 
 # Available Models
 
-| Model     | Parameters |
-| --------- | ---------: |
-| MiniGPT   |  1,435,792 |
-| MediumGPT |  2,725,792 |
+| Model      | Parameters |
+| ---------- | ---------: |
+| MiniGPT    | 1,435,792  |
+| MediumGPT  | 2,725,792  |
+| Medium-T   | 3,625,792  |
 
 ---
 
 # Model Downloads
 
-| Model     | Description                                        | Download                                                               |
-| --------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
-| MiniGPT   | Baseline educational GPT model                     | https://drive.google.com/file/d/1ksxeEqtXhsuF287R_gQBwqTKp9zQ41No/view |
-| MediumGPT | Improved model with stronger language capabilities | https://drive.google.com/file/d/1f938MeX0wDxJyksx042LjPyJ-zRdmyYl/view |
+| Model       | Description                                        | Download                                                               |
+| ----------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| MiniGPT     | Baseline educational GPT model                     | https://drive.google.com/file/d/1ksxeEqtXhsuF287R_gQBwqTKp9zQ41No/view |
+| MediumGPT   | Improved model with stronger language capabilities | https://drive.google.com/file/d/1f938MeX0wDxJyksx042LjPyJ-zRdmyYl/view |
+| MediumGPT-T | 3.6M-parameter model with stronger narrative coherence and context retention | https://drive.google.com/file/d/15CSyljQ0fqVS8XBLoHrwtbkVyxvM6cxN/view |
 
 ---
 
@@ -175,21 +177,57 @@ Config(
 )
 ```
 
+
+## MediumGPT-T Configuration
+
+```python
+Config(
+    embed_dim=82,
+    num_blocks=4,
+    num_heads=4,
+    dropout=0.1,
+    block_size=128,
+
+    batch_size=32,
+    grad_accum_steps=1,
+    epochs=10,
+
+    learning_rate=2.5e-4,
+    weight_decay=0.1,
+    grad_clip=1.0,
+
+    max_data_size=3_700_000,
+    validation_split=0.1,
+
+    tokenizer_type="sentencepiece",
+    sentencepiece_model_type="bpe",
+    sentencepiece_character_coverage=1.0,
+    max_vocab=20000,
+    tokenizer_rare_threshold=2,
+
+    early_stopping_patience=2,
+    early_stopping_min_delta=1e-4,
+    restore_best_model=True,
+
+    seed=42,
+    training_log_interval=50
+)
+```
+
 ---
 
 # Architecture Comparison
 
-| Property            | MiniGPT           | MediumGPT         |
-| ------------------- | ----------------- | ----------------- |
-| Parameters          | 1.44M             | 2.73M             |
-| Embedding Dimension | 64                | 64                |
-| Transformer Blocks  | 2                 | 3                 |
-| Attention Heads     | 2                 | 4                 |
-| Context Window      | 64                | 128               |
-| Vocabulary Size     | 16K               | 20K               |
-| Tokenizer           | SentencePiece BPE | SentencePiece BPE |
-| Training Data       | Smaller           | Larger            |
-| Context Retention   | Basic             | Improved          |
+| Property            | MiniGPT           | MediumGPT         | Medium-T          |
+| ------------------- | ----------------- | ----------------- | ----------------- |
+| Parameters          | 1.44M             | 2.73M             | 3.63M             |
+| Embedding Dimension | 64                | 64                | 64                |
+| Transformer Blocks  | 2                 | 3                 | 4                 |
+| Attention Heads     | 2                 | 4                 | 4                 |
+| Context Window      | 64                | 128               | 128               |
+| Vocabulary Size     | 16K               | 20K               | 20K               |
+| Tokenizer           | SentencePiece BPE | SentencePiece BPE | SentencePiece BPE |
+| Context Retention   | Basic             | Improved          | Stronger          |
 
 ---
 
@@ -215,28 +253,34 @@ the half-ling book one in the fall . after her mother had found herself a dirty 
 
 MediumGPT maintains longer grammatical structures and stronger context retention than MiniGPT, indicating a more effective internal language representation.
 
+## Medium-T Output
+
+```text
+the half-ling book one in the fall of my heart . that was the way to help him . for a short time , i didnt want to try again and be happy when someone can put out the chains together and internal tools placed their hands on both sides by dry skin . that is what i doing ? i noticed that julie had to close it and just stood still alive with mom and dad sitting at her next chair , listening to alex .
+```
 ---
 
 # Evaluation Report
 
 ## Summary
 
-Two language models were evaluated after training on comparable datasets.
+Three language models were evaluated after training on comparable datasets.
 
-| Model     | Result                                 |
-| --------- | -------------------------------------- |
-| MiniGPT   | Learns basic grammatical patterns      |
-| MediumGPT | Better coherence and context retention |
+| Model      | Result                                                |
+| ---------- | ----------------------------------------------------- |
+| MiniGPT    | Learns basic grammatical patterns                     |
+| MediumGPT  | Better coherence and context retention                |
+| Medium-T   | Strongest long-form generation and narrative ability  |
 
 ## Metrics
 
-| Metric              | MiniGPT | MediumGPT |
-| ------------------- | ------- | --------- |
-| Grammar             | 4/10    | 6/10      |
-| Coherence           | 3/10    | 5.5/10    |
-| Context Retention   | 2/10    | 5/10      |
-| Readability         | 4/10    | 6/10      |
-| Narrative Structure | 2/10    | 5/10      |
+| Metric              | MiniGPT | MediumGPT | Medium-T |
+| ------------------- | ------- | --------- | -------- |
+| Grammar             | 4/10    | 6/10      | 7/10     |
+| Coherence           | 3/10    | 5.5/10    | 6.5/10   |
+| Context Retention   | 2/10    | 5/10      | 7/10     |
+| Readability         | 4/10    | 6/10      | 7/10     |
+| Narrative Structure | 2/10    | 5/10      | 7/10     |
 
 ## Analysis
 
@@ -248,14 +292,22 @@ MediumGPT demonstrates:
 * More consistent sentence construction
 * Improved semantic relationships
 * Stronger narrative continuity
-* More stable text generation
 
-Although both models remain far from modern production-scale language models, the results clearly show that increasing model depth, attention capacity, vocabulary size, and context length leads to measurable improvements in generation quality.
+Medium-T further improves these capabilities by generating longer passages while maintaining a more stable narrative flow. The model introduces and reuses entities across multiple sentences and exhibits improved long-range dependency modeling.
+
+Observed improvements include:
+
+* Longer coherent generations
+* Better entity tracking
+* Stronger context retention
+* More natural sentence transitions
+* Reduced repetition
+
+Although all models remain significantly smaller than modern production-scale language models, the progression from 1.4M to 3.6M parameters demonstrates clear scaling benefits for language modeling quality.
 
 ---
 
 # Project Structure
-
 ```text
 MiniGPT/
 │

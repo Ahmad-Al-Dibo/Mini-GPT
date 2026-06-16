@@ -7,7 +7,7 @@ from gpt_lib import DEFAULT_MODEL_PATH, load_model
 
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", str("output/model_instruction.pth"))
+MODEL_PATH = os.getenv("MODEL_PATH", str("output/meduim_gpt-t.pth"))
 _loaded_model = None
 
 

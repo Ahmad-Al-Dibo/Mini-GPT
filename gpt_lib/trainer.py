@@ -107,11 +107,11 @@ class Trainer:
                         f"ETA = {eta_seconds:.1f}s",
                         flush=True,
                     )
-                    try:
-                        if checkpoint_callback is not None:
-                            checkpoint_callback(self)
-                    except Exception as e:
-                        pass # in the feaurue i want to add logging functions
+                    # try:
+                    #     if checkpoint_callback is not None:
+                    #         checkpoint_callback(self)
+                    # except Exception as e:
+                    #     pass # in the feaurue i want to add logging functions
 
             
             # Average training loss

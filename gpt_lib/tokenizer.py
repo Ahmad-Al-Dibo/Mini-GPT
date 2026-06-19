@@ -5,7 +5,7 @@ Tokenizer Module - Text to tokens conversion
 import tempfile
 from collections import Counter
 from pathlib import Path
-
+import base64
 import sentencepiece as spm
 
 
@@ -131,6 +131,39 @@ class Tokenizer:
             "max_vocab": self.max_vocab,
         }
 
+    def to_json(self):
+        """Serialize tokenizer to JSON-compatible dict."""
+        return {
+            "tokenizer_type": "word",
+            "max_vocab": self.max_vocab,
+            "vocab_size": self.vocab_size,
+            "vocab": self.vocab,
+            "token_counts": dict(self.token_counts),
+        }
+
+        @classmethod
+        def from_json(cls, data):
+            tokenizer = cls(max_vocab=data["max_vocab"])
+
+            tokenizer.vocab = data["vocab"]
+            tokenizer.vocab_size = data["vocab_size"]
+
+            tokenizer.stoi = {
+                token: idx
+                for idx, token in enumerate(tokenizer.vocab)
+            }
+
+            tokenizer.itos = {
+                idx: token
+                for idx, token in enumerate(tokenizer.vocab)
+            }
+
+            tokenizer.token_counts = Counter(
+                data.get("token_counts", {})
+            )
+
+            return tokenizer
+
 
 class SentencePieceTokenizer:
     """SentencePiece BPE tokenizer for subword language-model training."""
@@ -171,8 +204,20 @@ class SentencePieceTokenizer:
 
         return "\n".join(lines)
 
-    def build(self, text):
-        """Train a SentencePiece tokenizer from raw text."""
+    def build(self, text:str) -> dict:
+        """
+        Train a SentencePiece tokenizer from raw text.
+        @text: text data for the trainer.
+
+        return:
+            {
+            "vocab_size": self.vocab_size,
+            "vocab": self.vocab,
+            "stoi": self.stoi,
+            "itos": self.itos
+        }
+        
+        """
         self.token_counts = Counter(text.split())
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -195,7 +240,7 @@ class SentencePieceTokenizer:
             )
             self.processor.load(str(model_prefix) + ".model")
 
-        self._refresh_vocab()
+        return self._refresh_vocab()
 
     def to_checkpoint(self):
         """Return tokenizer metadata that can be stored in a model checkpoint."""
@@ -227,6 +272,12 @@ class SentencePieceTokenizer:
         self.vocab = [self.processor.id_to_piece(idx) for idx in range(self.vocab_size)]
         self.stoi = {piece: idx for idx, piece in enumerate(self.vocab)}
         self.itos = {idx: piece for idx, piece in enumerate(self.vocab)}
+        return {
+            "vocab_size": self.vocab_size,
+            "vocab": self.vocab,
+            "stoi": self.stoi,
+            "itos": self.itos
+        }
 
     def encode(self, tokens):
         """Encode tokens by joining them back into text first."""
@@ -261,6 +312,40 @@ class SentencePieceTokenizer:
         ]
         rare_tokens.sort(key=lambda item: (item[1], item[0]))
         return rare_tokens[:limit]
+    
+
+    def to_json(self):
+        """Serialize SentencePiece tokenizer."""
+        return {
+            "tokenizer_type": "sentencepiece",
+            "max_vocab": self.max_vocab,
+            "model_type": self.model_type,
+            "character_coverage": self.character_coverage,
+            "vocab_size": self.vocab_size,
+            "model_proto": base64.b64encode(
+                self.processor.serialized_model_proto()
+            ).decode("utf-8"),
+            "token_counts": dict(self.token_counts),
+        }
+
+    @classmethod
+    def from_json(cls, data):
+        tokenizer = cls(
+            max_vocab=data["max_vocab"],
+            model_type=data["model_type"],
+            character_coverage=data["character_coverage"],
+        )
+        model_proto = base64.b64decode(
+            data["model_proto"]
+        )
+        tokenizer.processor.load_from_serialized_proto(
+            model_proto
+        )
+        tokenizer.token_counts = Counter(
+            data.get("token_counts", {})
+        )
+        tokenizer._refresh_vocab()
+        return tokenizer
 
     def analyze_coverage(self, tokens, rare_threshold=2, top_unknown=20):
         """Measure unknown-piece usage for a token sequence."""

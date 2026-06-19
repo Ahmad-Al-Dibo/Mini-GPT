@@ -1,4 +1,4 @@
-Programming is the process of creating computer software.
+wat is programming? sure, Programming is the process of creating computer software.
 Software consists of instructions executed by computers.
 Python is an interpreted programming language.
 JavaScript is commonly used for web development.

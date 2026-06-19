@@ -20,20 +20,20 @@ def print_roadmap():
 ==================================================================
 |                                                                |
 | Current Model Status:                                          |
-|  [OK] Tokenizer: Works                                            |
-|  [OK] Embeddings: Work                                            |
-|  [OK] Attention: Probably works                                   |
-|  [OK] Next-token prediction: Works                                |
-|  [WARNING]  Knowledge representation: WEAK                            |
-|  [WARNING]  Generalization: WEAK                                      |
-|  [WARNING]  Dataset memorization: STRONG (bad!)                       |
-|  [WARNING]  Instruction following: ABSENT                             |
+|  [OK] Tokenizer: Works                                         |
+|  [OK] Embeddings: Work                                         |
+|  [OK] Attention: Probably works                                |
+|  [OK] Next-token prediction: Works                             |
+|  [WARNING]  Knowledge representation: WEAK                     |
+|  [WARNING]  Generalization: WEAK                               |
+|  [WARNING]  Dataset memorization: STRONG (bad!)                |
+|  [WARNING]  Instruction following: ABSENT                      |
 |                                                                |
 | Root Causes to Investigate:                                    |
-|  1. Model too small -> Cannot store knowledge                   |
-|  2. Overtraining on data -> Memorizes instead of learning       |
-|  3. No regularization -> Can't generalize                       |
-|  4. No instruction format -> Can't follow instructions          |
+|  1. Model too small -> Cannot store knowledge                  |
+|  2. Overtraining on data -> Memorizes instead of learning      |
+|  3. No regularization -> Can't generalize                      |
+|  4. No instruction format -> Can't follow instructions         |
 |                                                                |
 ==================================================================
 

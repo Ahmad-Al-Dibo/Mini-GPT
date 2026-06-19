@@ -35,6 +35,8 @@ def build_trainer(model, config):
 def checkpoint_is_compatible(checkpoint, config, vocab_size, tokenizer=None):
     """Check whether a checkpoint can be reused for the current run."""
     checkpoint_config = checkpoint.get("config", {})
+    if checkpoint_config == {}:
+        print("[WARNING] in `checkpoint_is_compatible` checkpoint config return {}! ")
     same_vocab = checkpoint.get("vocab_size") == vocab_size
     same_shape = (
         checkpoint_config.get("embed_dim", config.embed_dim) == config.embed_dim
@@ -57,15 +59,23 @@ def checkpoint_is_compatible(checkpoint, config, vocab_size, tokenizer=None):
         else:
             same_tokenizer = False
 
+    # same_training_strategy = (
+    #     checkpoint_config.get("learning_rate", config.learning_rate) == config.learning_rate
+    #     and checkpoint_config.get("weight_decay", config.weight_decay) == config.weight_decay
+    #     and checkpoint_config.get("dropout", 0.0) == config.dropout
+    #     and checkpoint_config.get("validation_split", config.validation_split)
+    #     == config.validation_split
+    # )
     same_training_strategy = (
-        checkpoint_config.get("learning_rate", config.learning_rate) == config.learning_rate
-        and checkpoint_config.get("weight_decay", config.weight_decay) == config.weight_decay
+        checkpoint_config.get("weight_decay", config.weight_decay) == config.weight_decay
         and checkpoint_config.get("dropout", 0.0) == config.dropout
         and checkpoint_config.get("validation_split", config.validation_split)
         == config.validation_split
     )
-    print(same_vocab, same_shape, same_tokenizer, same_training_strategy)
-    return same_vocab and same_shape and same_tokenizer and same_training_strategy
+    print("same_vocab, same_shape, same_tokenizer, same_training_strategy", same_vocab, same_shape, same_tokenizer, same_training_strategy)
+    # return same_vocab and same_shape and same_tokenizer and same_training_strategy
+    return same_shape and same_tokenizer and same_training_strategy
+
 
 
 def load_compatible_checkpoint(trainer, config, vocab_size, tokenizer=None):

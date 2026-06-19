@@ -5,3 +5,8 @@ data/all_cleaned_text.md
 data/bookcorpus.txt
 notebooks/bookcorpus_train.jsonl
 /output
+/docs/overview/Understanding Modern LLM-Based AI Systems
+docs/overview/Understanding Modern LLM-Based AI Systems.zip
+/gpt_lib/__pycache__
+train.py
+instruction_training.py

@@ -6,120 +6,7 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 import json
 
-
-# @dataclass
-# class Config:
-#     # Model
-#     embed_dim: int = 64
-#     block_size: int = 8
-#     batch_size: int = 64
-#     epochs: int = 100
-#     learning_rate: float = 1e-3
-#     weight_decay: float = 0.0
-#     dropout: float = 0.0
-#     grad_clip: float | None = None
-#     num_blocks: int = 2
-
-#     # Paths
-#     model_path: str = "output/model.pth"
-#     data_path: str = "data/data.txt"
-#     domain_data_path: str | None = None
-#     domain_data_repeats: int = 1
-
-#     # Tokenizer
-#     tokenizer_type: str = "word"
-#     sentencepiece_model_type: str = "bpe"
-#     sentencepiece_character_coverage: float = 1.0
-#     tokenizer_max_line_length: int = 4000
-#     tokenizer_rare_threshold: int = 2
-
-#     # Dataset
-#     max_vocab: int = 50000
-#     max_data_size: int = 1000000
-
-#     # Training
-#     device: str = "cpu"
-#     validation_split: float = 0.0
-#     early_stopping_patience: int | None = None
-#     early_stopping_min_delta: float = 0.0
-#     restore_best_model: bool = True
-#     seed: int = 42
-#     training_log_interval: int = 50
-
-#     # Diagnostics
-#     diagnostic_top_k: int = 5
-#     concept_benchmark_top_k: int = 10
-#     diagnostic_prompts: list[str] = field(
-#         default_factory=lambda: [
-#             "machine learning",
-#             "donald trump siad",
-#         ]
-#     )
-#     diagnostic_sample_tokens: int = 60
-
-#     # Long context evaluation
-#     run_long_context_evaluation: bool = False
-#     long_context_block_sizes: list[int] = field(
-#         default_factory=lambda: [32, 64, 128]
-#     )
-
-#     def to_dict(self) -> dict:
-#         """Convert config to dictionary with very simple function asdict"""
-#         return {"config": asdict(self)}
-
-#     def save(self, filename: str) -> None:
-#         """Save config to JSON file"""
-#         filename = Path(filename)
-
-#         if filename.parent:
-#             filename.parent.mkdir(parents=True, exist_ok=True)
-
-#         with open(filename, "w", encoding="utf-8") as f:
-#             json.dump(
-#                 self.to_dict(),
-#                 f,
-#                 indent=4,
-#                 ensure_ascii=False,
-#             )
-
-#     @classmethod
-#     def load(cls, filename: str) -> "Config":
-#         """Load config from JSON file"""
-#         filename = Path(filename)
-
-#         if not filename.exists():
-#             raise FileNotFoundError(
-#                 f"Config file not found: {filename}"
-#             )
-
-#         with open(filename, "r", encoding="utf-8") as f:
-#             data = json.load(f)
-
-#         config_data = data.get("config", {})
-
-#         return cls(**config_data)
-
-#     def update(self, **kwargs) -> None:
-#         """Update configuration values"""
-#         for key, value in kwargs.items():
-#             if hasattr(self, key):
-#                 setattr(self, key, value)
-#             else:
-#                 raise AttributeError(
-#                     f"Unknown configuration option: {key}"
-#                 )
-
-#     def __repr__(self) -> str:
-#         items = "\n".join(
-#             f"  {k}: {v}"
-#             for k, v in asdict(self).items()
-#         )
-#         return f"Config(\n{items}\n)"
-
-
-"""
-Configuration Module - Centralized settings
-"""
+import torch
 
 class Config:
     """Configuration class for model and training"""
@@ -164,6 +51,7 @@ class Config:
         self.tokenizer_rare_threshold = kwargs.get("tokenizer_rare_threshold", 2)
         self.training_log_interval = kwargs.get("training_log_interval", 50)
         self.run_long_context_evaluation = kwargs.get("run_long_context_evaluation", False)
+        self.use_checkpoint_tokenizer = kwargs.get("use_checkpoint_tokenizer", False)
         self.long_context_block_sizes = kwargs.get(
             "long_context_block_sizes",
             [32, 64, 128],
@@ -204,13 +92,152 @@ class Config:
             "tokenizer_rare_threshold": self.tokenizer_rare_threshold,
             "training_log_interval": self.training_log_interval,
             "run_long_context_evaluation": self.run_long_context_evaluation,
+            "use_checkpoint_tokenizer": self.use_checkpoint_tokenizer,
             "long_context_block_sizes": self.long_context_block_sizes,
         }
 
 
-    def load_model_conig(self, model_path):
+    def load_config_from_model(self, model_path):
         pass
+
+    def get_device(self):
+        return torch.device(self.device)
     
     def __repr__(self):
         items = "\n".join(f"  {k}: {v}" for k, v in self.to_dict().items())
         return f"Config(\n{items}\n)"
+
+
+
+
+def create_config(**kwargs) -> Config:
+    """
+    Create a Config object with sensible defaults that can be overridden.
+
+    Parameters
+    ----------
+    **kwargs
+        Any configuration field supported by the Config class.
+
+    Common Parameters
+    -----------------
+    embed_dim : int
+        Transformer embedding dimension.
+    num_blocks : int
+        Number of transformer blocks.
+    block_size : int
+        Maximum context length in tokens.
+    batch_size : int
+        Training batch size.
+    learning_rate : float
+        Optimizer learning rate.
+    dropout : float
+        Dropout probability.
+    max_vocab : int
+        Maximum tokenizer vocabulary size.
+    epochs : int
+        Number of training epochs.
+
+    Returns
+    -------
+    Config
+        Initialized configuration object.
+
+    Examples
+    --------
+    Create a default configuration:
+
+    >>> cfg = create_config()
+
+    Create a larger model:
+
+    >>> cfg = create_config(
+    ...     embed_dim=256,
+    ...     num_blocks=6,
+    ...     block_size=256
+    ... )
+
+    Customize training settings:
+
+    >>> cfg = create_config(
+    ...     batch_size=64,
+    ...     learning_rate=1e-4,
+    ...     epochs=20
+    ... )
+
+    Configure tokenizer settings:
+
+    >>> cfg = create_config(
+    ...     tokenizer_type="sentencepiece",
+    ...     max_vocab=16000
+    ... )
+
+    Notes
+    -----
+    - Any keyword argument matching a Config field will override
+      the default value.
+    - Unknown arguments are forwarded directly to Config.
+    - The device is automatically selected unless explicitly specified.
+    - For multi-head attention models, embed_dim should generally be
+      divisible by the number of attention heads.
+    """
+    defaults = {
+        "embed_dim": 64,
+        "block_size": 8,
+        "batch_size": 64,
+        "epochs": 100,
+        "learning_rate": 1e-3,
+        "weight_decay": 0.0,
+        "dropout": 0.0,
+        "grad_clip": None,
+        "num_blocks": 2,
+
+        "model_path": "output/model.pth",
+        "data_path": "data/data.txt",
+
+        "domain_data_path": None,
+        "domain_data_repeats": 1,
+
+        "tokenizer_type": "word",
+        "sentencepiece_model_type": "bpe",
+        "sentencepiece_character_coverage": 1.0,
+        "tokenizer_max_line_length": 4000,
+        "max_vocab": 50000,
+        "max_data_size": 1_000_000,
+        "tokenizer_rare_threshold": 2,
+
+        "device": "cuda" if torch.cuda.is_available() else "cpu",
+
+        "validation_split": 0.0,
+        "early_stopping_patience": None,
+        "early_stopping_min_delta": 0.0,
+        "restore_best_model": True,
+
+        "seed": 42,
+
+        "diagnostic_top_k": 5,
+        "concept_benchmark_top_k": 10,
+        "diagnostic_prompts": [
+            "machine learning",
+            "donald trump",
+        ],
+        "diagnostic_sample_tokens": 60,
+
+        "training_log_interval": 50,
+
+        "run_long_context_evaluation": False,
+        "use_checkpoint_tokenizer": False,
+        "long_context_block_sizes": [32, 64, 128],
+    }
+
+    unknown = set(kwargs) - set(defaults)
+    if unknown:
+        raise ValueError(
+            f"Unknown configuration parameters: {', '.join(sorted(unknown))}"
+        )
+
+    defaults.update(kwargs)
+
+    torch.manual_seed(defaults.get("seed"))
+
+    return Config(**defaults)

@@ -25,3 +25,9 @@
 [INST]What is Lifelong learning?[/INST] Lifelong learning supports adaptation.
 [INST]What is Mechanical engineering?[/INST] Mechanical engineering develops machines.
 [INST]What is Learning continues?[/INST] Learning continues throughout life.
+[INST]What is The LINQ?[/INST] The LINQ extensions and the functional imports help developers reduce the amount of boilerplate code included in common tasks such as querying a database, parsing an XML file, or searching through a data structure, shifting the emphasis onto the actual program logic to help improve readability and maintainability.
+[INST]What is Some C#?[/INST] Some C# compilers can also generate machine code like traditional compilers of Objective-C, C, C++, Assembly and Fortran.
+[INST]What is C# supports?[/INST] C# supports a strict Boolean data type, bool.
+[INST]What is NET APIs,?[/INST] NET APIs, which enable scenarios such as type metadata inspection and dynamic method invocation.
+[INST]What is Attributes, in?[/INST] Attributes, in C# parlance, are metadata that can be attached to types, members, or entire assemblies, equivalent to annotations in Java.
+[INST]What is Emit namespace,?[/INST] Emit namespace, which contains classes that emit metadata and CIL (types, assemblies, etc.

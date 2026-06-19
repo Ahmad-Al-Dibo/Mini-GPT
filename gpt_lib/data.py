@@ -4,11 +4,15 @@ Data preparation utilities for language-model training.
 
 import random
 import re
+import json
+import os
+import torch
 from dataclasses import dataclass
 from pathlib import Path
-
+from collections import Counter
 from .dataset import create_dataloader
 from .tokenizer import SentencePieceTokenizer, Tokenizer
+from .config import Config
 from typing import Optional
 # from .tokenizer import Tokenizer
 
@@ -34,6 +38,21 @@ class DataBundle:
     def vocab_size(self):
         # Voorkom een crash als tokenizer None is
         return self.tokenizer.get_vocab_size() if self.tokenizer else 0
+
+    def count(self):
+        if self.train_encoded is None:
+            raise RuntimeError(
+                "train_encoded has not been initialized. Load and encode data first."
+            )
+
+        return Counter(self.tokenizer.decode(self.train_encoded))
+
+    def save_tokenizer(self, path):
+        tdata = self.tokenizer.to_json()
+        with open(path, "w") as f:
+            f.write(json.dumps(tdata))
+        return tdata
+
 
 
 ########## Old this do not append the \n in tokens list ##########
@@ -127,8 +146,42 @@ def split_train_val(tokens, validation_split, block_size, seed=42):
     return tokens[:-val_count], tokens[-val_count:]
 
 
-def prepare_data(config) -> DataBundle:
-    """Load tokens, create train/validation splits, build tokenizer, and loaders."""
+def load_tokenizer_from_checkpoint(checkpoint):
+    tok_data = checkpoint.get("tokenizer")
+
+    if tok_data is None:
+        return None
+
+    if tok_data["tokenizer_type"] == "word":
+        return Tokenizer.from_json(tok_data)
+
+    if tok_data["tokenizer_type"] == "sentencepiece":
+        return SentencePieceTokenizer.from_json(tok_data)
+
+    raise ValueError(
+        f"Unknown tokenizer type: {tok_data['tokenizer_type']}"
+    )
+
+
+def prepare_data(config: Config, old_tokenizer=None) -> DataBundle:
+    """
+    Load tokens, create train/validation splits, build tokenizer, and loaders.
+
+    @config: Config model
+
+    return: 
+          (DataBundle) model met de volgende variabels:
+            tokens: list
+            train_tokens: list
+            val_tokens: list
+            tokenizer: Tokenizer | SentencePieceTokenizer | None
+            train_loader: object
+            val_loader: object
+            train_encoded: list
+            val_encoded: list
+
+    
+    """
     tokens = load_tokens(config)
     train_tokens, val_tokens = split_train_val(
         tokens,
@@ -136,21 +189,47 @@ def prepare_data(config) -> DataBundle:
         config.block_size,
         config.seed,
     )
-    tokenizer = Tokenizer(max_vocab=config.max_vocab)
 
-    tokenizer_type = getattr(config, "tokenizer_type", "word")
-    if tokenizer_type == "sentencepiece":
-        tokenizer = SentencePieceTokenizer(
-            max_vocab=config.max_vocab,
-            model_type=getattr(config, "sentencepiece_model_type", "bpe"),
-            character_coverage=getattr(config, "sentencepiece_character_coverage", 1.0),
-        )
-    elif tokenizer_type == "word":
-        tokenizer = Tokenizer(max_vocab=config.max_vocab)
+
+    if old_tokenizer is not None:
+        print("tokenizer is old!")
+        tokenizer = old_tokenizer
+
     else:
-        raise ValueError(f"Unsupported tokenizer_type: {tokenizer_type}")
+        tokenizer_type = getattr(
+            config,
+            "tokenizer_type",
+            "word"
+        )
 
-    tokenizer.build(" ".join(train_tokens))
+        if tokenizer_type == "sentencepiece":
+            print("tokenizer is sentencepiece!")
+            tokenizer = SentencePieceTokenizer(
+                max_vocab=config.max_vocab,
+                model_type=getattr(
+                    config,
+                    "sentencepiece_model_type",
+                    "bpe"
+                ),
+                character_coverage=getattr(
+                    config,
+                    "sentencepiece_character_coverage",
+                    1.0
+                ),
+            )
+
+        elif tokenizer_type == "word":
+            print("tokenizer is word!")
+            tokenizer = Tokenizer(
+                max_vocab=config.max_vocab
+            )
+
+        else:
+            raise ValueError(
+                f"Unsupported tokenizer_type: {tokenizer_type}"
+            )
+
+        tokenizer.build(" ".join(train_tokens))
 
     train_encoded = tokenizer.encode(train_tokens)
     train_loader = create_dataloader(

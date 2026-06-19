@@ -8,7 +8,7 @@ from .dataset import TextDataset, create_dataloader
 from .data import DataBundle, load_tokens, prepare_data, read_tokens, split_train_val
 from .model import MiniGPT
 from .trainer import Trainer
-from .config import Config
+from .config import Config, create_config
 from .generator import Generator
 from .inference import DEFAULT_MODEL_PATH, LoadedModel, load_model, predict
 from .pipeline import (

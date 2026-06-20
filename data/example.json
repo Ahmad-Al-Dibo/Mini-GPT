@@ -1,0 +1,20 @@
+[
+  {
+    "messages": [
+      {"role": "user", "content": "What is Python?"},
+      {"role": "assistant", "content": "Python is a programming language."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Explain Python in detail."},
+      {"role": "assistant", "content": "Python is a high-level interpreted programming language used for web development, AI, automation, and more."}
+    ]
+  },
+  {
+    "messages": [
+      {"role": "user", "content": "Describe Python in one sentence."},
+      {"role": "assistant", "content": "Python is a versatile programming language."}
+    ]
+  }
+]

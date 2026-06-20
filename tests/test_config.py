@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from gpt_lib import create_config
+from src.miniGPT import create_config
 
 def test_create_default_config():
     cfg = create_config()

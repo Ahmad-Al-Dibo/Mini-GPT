@@ -1,10 +1,14 @@
 *.pyc
+*.pth
 /src
 /dataset
 data/all_cleaned_text.md
 data/bookcorpus.txt
+notebooks/tokenizer.json
 /output
 /docs/overview/Understanding Modern LLM-Based AI Systems
 docs/overview/Understanding Modern LLM-Based AI Systems.zip
 /gpt_lib/__pycache__
 /notebooks
+data/databricks-dolly.json
+data/tokenizer.json

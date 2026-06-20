@@ -8,7 +8,7 @@ import torch.nn as nn
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from gpt_lib import (
+from src.miniGPT import (
     ConceptBenchmarkCase,
     Config,
     MiniGPT,

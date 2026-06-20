@@ -10,7 +10,7 @@ import os
 import torch
 import torch.nn as nn
 from collections import Counter
-from gpt_lib import (
+from src.miniGPT import (
     Config, Tokenizer, create_dataloader,
     MiniGPT, Trainer, Generator,
     GeneralizationMonitor

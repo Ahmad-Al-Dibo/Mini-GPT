@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from gpt_lib import Config, Tokenizer, create_dataloader, MiniGPT, Trainer
+from src.miniGPT import Config, Tokenizer, create_dataloader, MiniGPT, Trainer
 
 
 def train_custom_model(data_path, model_size="small"):

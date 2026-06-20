@@ -9,13 +9,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from gpt_lib import Config, Tokenizer, MiniGPT, Generator, GeneralizationMonitor
+from src.miniGPT import Config, Tokenizer, MiniGPT, Generator, GeneralizationMonitor
 
 
 def demo_repetition_penalty():
     """Toon verschil tussen met en zonder repetition penalty"""
     
-    model_path = "output/mini_gpt.pth"
+    model_path = "models/mini_gpt.pth"
     if not Path(model_path).exists():
         print(f"[ERROR] Model not found at {model_path}")
         return

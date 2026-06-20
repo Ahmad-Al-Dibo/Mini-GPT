@@ -2,12 +2,12 @@ import os
 
 from flask import Flask, jsonify, render_template, request
 
-from gpt_lib import DEFAULT_MODEL_PATH, load_model
+from src.miniGPT import DEFAULT_MODEL_PATH, load_model
 
 
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", str("output/MeduimGPT.pth"))
+MODEL_PATH = os.getenv("MODEL_PATH", str("models/MeduimGPT.pth"))
 _loaded_model = None
 
 

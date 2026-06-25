@@ -12,3 +12,8 @@ docs/overview/Understanding Modern LLM-Based AI Systems.zip
 /notebooks
 data/databricks-dolly.json
 data/tokenizer.json
+/data
+/data
+/data/cleaner
+/adapter
+/models/wikitext-103-raw-v1

@@ -1,257 +1,86 @@
-# MiniGPT - Educational Transformer Language Model
+### 1. Geavanceerde Planningsprompt — Het Planningsprotocol
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-1.9+-red.svg)](https://pytorch.org/)
+**[Rol en verantwoordelijkheid]**  
+Je handelt als **Staff Software Engineer** en **Tech Lead**. Je taak is het maken van een strikt architecturaal plan voor het volgende project:
 
-A clean, educational implementation of a GPT-style transformer language model designed for learning and experimentation.
+** 
+Here is the project description:
+  Het doel van de project is om een miniatuurversie van GPT te ontwikkelen, genaamd Mini-GPT. Het project zal zich richten op het bouwen van een lichtgewicht, efficiënte en schaalbare implementatie van een generatief taalmodel dat kan worden gebruikt voor diverse toepassingen zoals tekstgeneratie, samenvatting en vraagbeantwoording. Het project zal gebruik maken van moderne machine learning technieken en zal worden ontwikkeld met een focus op modulariteit, herbruikbaarheid en onderhoudbaarheid.
 
-## 🚀 Quick Start
-
-```bash
-# 1. Install
-pip install -r requirements.txt
-
-# 2. Generate text
-python -c "from src.inference import LoadedModel; m = LoadedModel('models/MiniGPT.pth'); print(m.predict('The future is'))"
-
-# 3. Start web interface
-python app.py
-# Open: http://localhost:5000
-```
-
-## 📚 Documentation
-
-**New to MiniGPT?** → Start here: **[`docs/00_START_HERE.md`](docs/00_START_HERE.md)** ⚡
-
-All documentation is in the `docs/` folder:
-- **01_QUICK_START.md** - 5-minute getting started guide
-- **02_FULL_DOCUMENTATION.md** - Comprehensive reference
-- **03_API_REFERENCE.md** - Complete API documentation  
-- **04_ARCHITECTURE_DEEP_DIVE.md** - Technical details
-- **05_DATASET_GUIDE.md** - Data preparation guide
-
-## 📁 Project Structure
-
-```
-Mini-GPT/
-├── 📄 README.md                        ← You are here
-├── 📄 requirements.txt                 ← Dependencies
-├── 📄 app.py                           ← Flask web server
-│
-├── 📁 src/                             ← Source code library
-│   ├── model.py, trainer.py, inference.py, ...
-│   └── See: docs/03_API_REFERENCE.md
-│
-├── 📁 docs/                            ← Documentation (START HERE)
-│   ├── 00_START_HERE.md                ← Main entry point
-│   ├── 01-05_*.md                      ← 5 main guides
-│   └── legacy/                         ← Old documentation
-│
-├── 📁 examples/                        ← Usage examples
-│   ├── 01_basic_generation.py
-│   ├── 02_custom_training.py
-│   ├── 03_instruction_tuning.py
-│   └── ... (more examples)
-│
-├── 📁 models/                          ← Pre-trained models
-│   ├── MiniGPT.pth
-│   ├── MediumGPT.pth
-│   └── README.md
-│
-├── 📁 data/                            ← Training data
-│   ├── tokenizer.json
-│   ├── training/                       ← Training datasets
-│   ├── raw/                            ← Raw data files
-│   └── README.md
-│
-├── 📁 datasets/                        ← Knowledge base markdown
-│   ├── programming/
-│   ├── platforms/
-│   ├── databases/
-│   └── README.md
-│
-├── 📁 evaluation/                      ← Evaluation tools
-│   ├── metrics.py, diagnostic.py, ...
-│   └── README.md
-│
-├── 📁 tests/                           ← Unit tests
-│   └── test_*.py
-│
-├── 📁 config/                          ← Configuration
-│   ├── model_configs.py
-│   └── README.md
-│
-├── 📁 templates/                       ← Web UI templates
-│   └── index.html
-│
-└── 📁 notebooks/                       ← Jupyter notebooks
-    ├── 01_load_data.ipynb
-    └── ... (more notebooks)
-```
-
-## 🎯 What Can You Do?
-
-- ✅ **Generate text** - Use pre-trained models
-- ✅ **Train models** - On your own data
-- ✅ **Fine-tune** - Instruction-following tasks
-- ✅ **Deploy** - Flask web API
-- ✅ **Evaluate** - Perplexity, accuracy, diagnostics
-- ✅ **Understand** - Complete documentation & examples
-
-## 💻 Usage Examples
-
-### Generate Text
-```python
-from src.inference import LoadedModel
-
-model = LoadedModel("models/MiniGPT.pth")
-result = model.predict("The future of AI is", max_new_tokens=50)
-print(result)
-```
-
-### Train a Model
-```python
-from src.pipeline import Pipeline
-from src.dataset import TextDataset
-from torch.utils.data import DataLoader
-
-pipeline = Pipeline()
-model, trainer = pipeline.build_model_and_trainer("MiniGPT")
-
-dataset = TextDataset("data/my_data.txt", block_size=128)
-loader = DataLoader(dataset, batch_size=32)
-
-trainer.train(loader, loader, epochs=10, checkpoint_path="models/my_model.pth")
-```
-
-### Use Web API
-```bash
-# Start server
-python app.py
-
-# Generate text via API
-curl -X POST http://localhost:5000/generate \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "AI is", "max_new_tokens": 50}'
-```
-
-## 🏗️ Architecture
-
-MiniGPT implements a **decoder-only transformer** with:
-- **Multi-head self-attention** - Parallel attention heads
-- **Position embeddings** - Learns position information
-- **Feed-forward networks** - Non-linear transformations
-- **Layer normalization** - Gradient stability
-- **Causal masking** - Prevents attending to future tokens
-
-For details, see: [`docs/04_ARCHITECTURE_DEEP_DIVE.md`](docs/04_ARCHITECTURE_DEEP_DIVE.md)
-
-## 📦 Requirements
-
-- Python 3.8+
-- PyTorch 1.9+
-- 4GB+ RAM (8GB+ recommended)
-- GPU optional but recommended (NVIDIA with CUDA)
-
-Install:
-```bash
-pip install -r requirements.txt
-```
-
-## 📊 Model Sizes
-
-| Model | Parameters | Speed | Quality |
-|-------|-----------|-------|---------|
-| **MiniGPT** | ~2M | Fast | Good |
-| **MediumGPT** | ~11M | Slow | Better |
-
-## 🎓 Learning Resources
-
-### For Beginners
-1. Read: [`docs/01_QUICK_START.md`](docs/01_QUICK_START.md)
-2. Try: Generate text example
-3. Learn: [`docs/02_FULL_DOCUMENTATION.md`](docs/02_FULL_DOCUMENTATION.md)
-
-### For Developers
-1. Read: [`docs/03_API_REFERENCE.md`](docs/03_API_REFERENCE.md)
-2. Check: Examples in `examples/`
-3. Integrate: Into your application
-
-### For Researchers
-1. Read: [`docs/04_ARCHITECTURE_DEEP_DIVE.md`](docs/04_ARCHITECTURE_DEEP_DIVE.md)
-2. Study: Mathematical formulations
-3. Extend: Model architecture
-
-### For Data Scientists
-1. Read: [`docs/05_DATASET_GUIDE.md`](docs/05_DATASET_GUIDE.md)
-2. Prepare: Your data
-3. Train: Custom models
-
-## 🔧 Common Tasks
-
-| Task | Command | Docs |
-|------|---------|------|
-| Generate text | `python examples/01_basic_generation.py` | Examples |
-| Train model | `python examples/02_custom_training.py` | Training Guide |
-| Start web UI | `python app.py` | Web Interface |
-| Run tests | `pytest tests/` | Tests |
-| View help | `cat docs/00_START_HERE.md` | Quick Start |
-
-## 📈 Performance
-
-| Device | Speed | Notes |
-|--------|-------|-------|
-| CPU | ~30 tokens/sec | Slow but works |
-| GPU (RTX 3090) | ~500 tokens/sec | Fast inference |
-| Training | 30-60s per epoch | Depends on data size |
-
-## ❓ FAQ
-
-**Q: Is this production-ready?**  
-A: No, it's educational. For production, use Hugging Face Transformers.
-
-**Q: How much data do I need?**  
-A: 10MB minimum, 100MB+ recommended.
-
-**Q: Can I use this on CPU?**  
-A: Yes, but GPU is 10-50x faster.
-
-**Q: How do I fine-tune?**  
-A: See [`docs/02_FULL_DOCUMENTATION.md#instruction-tuning`](docs/02_FULL_DOCUMENTATION.md#instruction-tuning)
-
-**Q: Can I export the model?**  
-A: Yes, models are saved as PyTorch .pth files.
-
-## 🤝 Contributing
-
-Contributions welcome! Areas:
-- Better documentation
-- Additional examples
-- Performance optimizations
-- New features
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) for details
-
-## 🙏 Acknowledgments
-
-- Inspired by GPT-2 and GPT-3
-- Based on transformer architecture from "Attention Is All You Need"
-- Built with PyTorch
-
-## 📞 Support
-
-- **Quick help:** See [`docs/00_START_HERE.md`](docs/00_START_HERE.md)
-- **Issues:** Check [`docs/02_FULL_DOCUMENTATION.md#troubleshooting`](docs/02_FULL_DOCUMENTATION.md#troubleshooting)
-- **Questions:** Read relevant docs
+  de procces van die je met deze library wil laten kunnen uitvoeren is:
+  1. Data Doel stellen: Het definiëren van de specifieke taken en doelen die het Mini-GPT model moet bereiken, zoals tekstgeneratie, samenvatting of vraagbeantwoording.
+  2. Data verzamelen en voorbereiden: Het verzamelen van relevante datasets en het uitvoeren van data-preprocessing, zoals tokenisatie, normalisatie en opschonen van de gegevens.
+  3. Pre-training en fine-tuning met instructies zoals EOS of vraag en antwoord en andere technieken: Het trainen van het Mini-GPT model op de verzamelde datasets, inclusief pre-training op grote hoeveelheden tekst en fine-tuning op specifieke taken.
+  4. Evaluatie en validatie: Het evalueren van de prestaties van het Mini-GPT model met behulp van geschikte evaluatiemethoden en het valideren van de resultaten om ervoor te zorgen dat het model voldoet aan de gestelde doelen.
+  5. stopcriteria en optimalisatie: Het definiëren van stopcriteria voor het trainingsproces en het optimaliseren van het model om de prestaties te verbeteren, zoals hyperparameterafstemming en modelcompressie.
+  6. rapporteer en documenteer: Het genereren van gedetailleerde rapporten over de prestaties van het Mini-GPT model, inclusief statistieken, grafieken en analyses, en het documenteren van de implementatie, architectuur en gebruiksinstructies voor toekomstige referentie.
+  7. gebruik maken van vreschillende technieken zoals: EOS, vraag en antwoord, en andere technieken om de prestaties van het model te verbeteren en de gewenste resultaten te bereiken.
+  8. gebriuk maken van verschillende Tokenizers zoals: SentencePiece, Byte-Pair Encoding (BPE), WordPiece, en andere tokenisatie-technieken om de tekstgegevens effectief te verwerken en te representeren voor het Mini-GPT model.
+  9. makkelijk gebruik maken van de library: Het ontwikkelen van een gebruiksvriendelijke interface en API voor het Mini-GPT model, zodat gebruikers eenvoudig toegang hebben tot de functionaliteiten en het model kunnen integreren in hun toepassingen.
+  10. continue verbeteren en updaten dus goede documentatie en rapportage: Het implementeren van een proces voor continue verbetering en updates van het Mini-GPT model, inclusief het bijhouden van wijzigingen, het documenteren van nieuwe functies en verbeteringen, en het regelmatig updaten van de gebruikershandleiding en API-documentatie.
+  11. Goede naam kiezen voor de library: Het selecteren van een geschikte en herkenbare naam voor de Mini-GPT library die de functionaliteit en het doel van het project weerspiegelt, en het registreren van de naam indien nodig om merkbescherming te waarborgen.
+  12. een belangerijk deel is data ik ook wil dat het mogelijk om een al bestaand model van andere kunnen finetunen en gebruiken met de library: Het ontwikkelen van functionaliteiten en interfaces die het mogelijk maken om bestaande modellen van andere bronnen te finetunen en te gebruiken binnen de Mini-GPT library, zodat gebruikers kunnen profiteren van reeds getrainde modellen en deze kunnen aanpassen aan hun specifieke behoeften. 
+ **
 
 ---
 
-**Ready to start?** → Open [`docs/00_START_HERE.md`](docs/00_START_HERE.md) 🚀
+## Regels vóór de planning
+
+Voordat je met de protocollen begint, pas je het principe **Think Before Coding** toe:
+
+1. Benoem je aannames over de requirements duidelijk.
+2. Als een requirement dubbelzinnig is, stop dan en stel direct een vraag. Kies geen richting in stilte.
+3. Stel eerst de eenvoudigste geldige oplossing voor. Wijs onnodige complexiteit af.
 
 ---
 
-**Last Updated:** June 20, 2026  
-**Version:** 1.0
+## Verplichte protocollen — Sequentieel uitvoeren
+
+### Protocol 1: Tijdsbewustzijn en betrouwbaarheid van dependencies
+
+- Bepaal het huidige jaar en de huidige maand via de shell.
+- Als dit lukt, controleer dan officiële bronnen, zoals npm, GitHub of officiële documentatie, op de nieuwste stabiele dependency-versies die op dat moment beschikbaar zijn.
+- Documenteer de gekozen versies.
+- Vermijd deprecated packages, API’s, patronen en libraries volledig.
+
+### Protocol 2: Logische flow en geen feature creep
+
+- Blijf strikt binnen de gevraagde scope.
+- Voeg geen extra features toe.
+- Introduceer geen flexibiliteit die niet expliciet gevraagd is.
+- Definieer de gebruikersreis voor een GUI-project of de dataflow voor een API-project als **verifieerbare doelen**.
+
+### Protocol 3: Chirurgische architectuur en realistische abstractie
+
+- Pas **Simplicity First** toe: gebruik zo weinig mogelijk code die het probleem correct oplost.
+- Maak alleen een `Shared/Core`-laag voor logica die daadwerkelijk hergebruikt wordt.
+- Abstraheer geen code die maar één keer gebruikt wordt.
+- Gebruik een feature-gebaseerde, domain-driven structuur.
+- Vermijd overdreven bestandsfragmentatie en micro-files.
+
+### Protocol 4: Veilige loggingstrategie
+
+- Ontwerp een eenvoudig, niet-blokkerend asynchroon loggingsysteem.
+- Ondersteun alleen essentiële logniveaus.
+- Zorg dat logging geen negatieve invloed heeft op de runtime-performance.
+
+### Protocol 5: Extern projectgeheugen — `PROJECT_MAP.md`
+
+Maak de inhoud van `PROJECT_MAP.md` met:
+
+- `[TECH_STACK]`
+- `[SYSTEM_FLOW]`
+- `[ARCHITECTURE]`
+- `[ORPHANS & PENDING]`
+
+Gebruik `[ORPHANS & PENDING]` om ontbrekende, incomplete, losgekoppelde of openstaande onderdelen van het project bij te houden.
+
+---
+
+## Vereiste output
+
+Lever de planning aan in compacte, precieze technische taal.
+
+Neem een actieplan met milestones op, gebaseerd op **verifieerbare doelen**.
+
+Wacht na het afronden van de planning op goedkeuring voordat je begint met implementeren.

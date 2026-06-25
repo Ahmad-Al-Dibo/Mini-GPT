@@ -2,3 +2,6 @@ flask
 sentencepiece
 torch
 numpy
+transformers 
+accelerate 
+bitsandbytes

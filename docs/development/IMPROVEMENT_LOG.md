@@ -94,3 +94,83 @@ This phase makes overfitting easier to observe and reduces training instability.
 - Diagnostics now load bounded token samples instead of reading an entire large corpus file into memory.
 - Knowledge representation in the diagnostic is now scored from prompt keyword matches instead of being inferred from memorization accuracy.
 
+
+## 2026-06-20 - MiniGPT Project Organization
+
+### ✅ Documentation Organization
+- Created `docs/00_START_HERE.md` - Clear entry point
+- Organized 5 main documentation files with numbering
+- Created `docs/legacy/` folder for old documents
+- All documentation now easily accessible
+
+### ✅ Directory Guides (README files)
+- `models/README.md` - Pre-trained models guide
+- `examples/README.md` - Usage examples guide
+- `data/README.md` - Data management guide
+- `datasets/README.md` - Knowledge base guide
+- `evaluation/README.md` - Evaluation tools
+- `tests/README.md` - Testing guide
+- `config/README.md` - Configuration guide
+
+### ✅ Main Project Files
+- Created `README_NEW.md` - Professional new README
+- Created `ORGANIZATION_GUIDE.md` - Full organization plan
+- Created `ORGANIZATION_SUMMARY.md` - What was organized
+- Created `CLEANUP_GUIDE.md` - Optional cleanup steps
+
+
+
+### 📁 New Structure
+
+```
+Mini-GPT/
+├── 📄 README.md (or README_NEW.md)         ← START HERE
+├── 📄 ORGANIZATION_GUIDE.md                ← Organization info
+├── 📄 CLEANUP_GUIDE.md                     ← Optional cleanup
+├── 📄 app.py                               ← Web server
+├── 📄 requirements.txt                     ← Dependencies
+│
+├── 📁 docs/                                ← DOCUMENTATION (START HERE)
+│   ├── 00_START_HERE.md                    ✨ MAIN ENTRY POINT
+│   ├── 01_QUICK_START.md
+│   ├── 02_FULL_DOCUMENTATION.md
+│   ├── 03_API_REFERENCE.md
+│   ├── 04_ARCHITECTURE_DEEP_DIVE.md
+│   ├── 05_DATASET_GUIDE.md
+│   └── legacy/                             ← Old docs
+│
+├── 📁 examples/                            ← USAGE EXAMPLES
+│   ├── README.md                           ✨ NEW
+│   └── *.py files
+│
+├── 📁 models/                              ← PRE-TRAINED MODELS
+│   ├── README.md                           ✨ NEW
+│   └── *.pth files
+│
+├── 📁 data/                                ← TRAINING DATA
+│   ├── README.md                           ✨ NEW
+│   └── training/
+│
+├── 📁 datasets/                            ← KNOWLEDGE BASE
+│   ├── README.md                           ✨ NEW
+│   └── *.md files
+│
+├── 📁 config/                              ← CONFIGURATION
+│   ├── README.md                           ✨ NEW
+│   └── *.py files
+│
+├── 📁 evaluation/                          ← EVALUATION
+│   ├── README.md
+│   └── *.py files
+│
+└── 📁 tests/                               ← TESTS
+    ├── README.md                           ✨ NEW
+    └── test_*.py files
+```
+
+
+
+
+
+## 2026-06-22 - MiniGPT Planning for fixing, adding or improving features.
+

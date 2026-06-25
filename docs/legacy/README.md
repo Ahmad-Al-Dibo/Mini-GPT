@@ -22,7 +22,7 @@ These files are kept because:
 3. Backup in case needed
 4. Documentation of past decisions
 
-## 🚀 What to Use Instead
+## 🚀 What to Use Instead.
 
 ### Instead of README.md (Dutch)
 → Use: `../00_START_HERE.md` (English, current)

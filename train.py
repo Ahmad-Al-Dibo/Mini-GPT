@@ -90,7 +90,7 @@ def main():
         print(f"✓ Validation batches: {len(data.val_loader)}")
     
     # Data analysis
-    print(f"\n📊 Data sample analysis:")
+    print(f"\n Data sample analysis:")
     print(f"  Raw tokens (first 20): {data.train_encoded[:20]}")
     print(f"  Decoded: {data.tokenizer.decode(data.train_encoded[:20])}")
     counter = Counter(data.tokenizer.decode(data.train_encoded))
@@ -98,7 +98,7 @@ def main():
     print(f"  Top 5 tokens: {counter.most_common(5)}")
     
     # ========== MODEL CREATION ==========
-    print("\n🤖 Building model...")
+    print("\n Building model...")
     model = build_model(config, data.vocab_size)
     params = model.get_num_parameters()
     print(f"✓ Model parameters: {params:,}")
@@ -111,7 +111,7 @@ def main():
         return
     
     # ========== TRAINER SETUP ==========
-    print("\n🔧 Setting up trainer...")
+    print("\n Setting up trainer...")
     trainer = build_trainer(model, config)
     print("✓ Trainer created")
     print(f"  - Optimizer: AdamW")

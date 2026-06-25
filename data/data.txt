@@ -1,0 +1,8 @@
+MiniGPT is a small GPT style language model.
+Machine learning models learn patterns from text.
+Transformers use attention to connect tokens in context.
+Fine tuning adapts a pretrained model to a smaller task dataset.
+Good training data should be clean, consistent, and repeated enough for testing.
+Question answer examples can be formatted with clear markers.
+question: what is MiniGPT? answer: MiniGPT is a small language model library.
+question: what is fine tuning? answer: Fine tuning adapts a pretrained model to new data.

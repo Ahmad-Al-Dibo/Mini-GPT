@@ -2,17 +2,16 @@ import os
 
 from flask import Flask, jsonify, render_template, request
 
-from src.miniGPT import DEFAULT_MODEL_PATH, load_model
+from arclm import load_model
 
 
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", str("models/MeduimGPT.pth"))
+MODEL_PATH = os.getenv("MODEL_PATH", "models/arclm.pth")
 _loaded_model = None
 
 
 def get_loaded_model():
-    """Lazy-load the model once per Flask process."""
     global _loaded_model
     if _loaded_model is None:
         _loaded_model = load_model(MODEL_PATH)
@@ -31,10 +30,9 @@ def generate():
         payload = request.get_json(silent=True) or {}
         prompt = (payload.get("prompt") or "").strip()
         if not prompt:
-            return jsonify({"error": "Voer eerst een prompt in."}), 400
+            return jsonify({"error": "Enter a prompt first."}), 400
 
         loaded_model = get_loaded_model()
-        print("model loaded")
         result = loaded_model.predict(
             prompt,
             max_new_tokens=_bounded_int(payload.get("max_new_tokens"), 80, 1, 300),
@@ -51,7 +49,6 @@ def generate():
         return jsonify({"result": result, "model_path": MODEL_PATH})
 
     except Exception as exc:
-        print("ERROR:", str(exc))
         return jsonify({"error": str(exc)}), 500
 
 

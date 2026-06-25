@@ -1,499 +1,572 @@
-# GPT Library - Modulaire LLM Framework
+# MiniGPT Library Usage Guide
 
-Een herbruikbare Python library voor het trainen en gebruiken van kleine Transformer-gebaseerde taalmodellen.
+This guide shows the real library workflow for:
 
-## 📁 Project Structuur
+- training a new MiniGPT model from scratch
+- loading a trained/pretrained MiniGPT checkpoint for inference
+- fine-tuning a MiniGPT checkpoint on new data
+- fine-tuning a model downloaded from another source, such as Kaggle
 
-```
-gpt_lib/
-├── __init__.py           # Library exports
-├── config.py             # Configuratie management
-├── tokenizer.py          # Tekst naar tokens conversie
-├── dataset.py            # Dataset en DataLoader
-├── model.py              # MiniGPT architectuur
-├── trainer.py            # Training loop en model management
-└── generator.py          # Text generation utilities
+The examples are intentionally small so you can run them locally first, then replace the demo data with your real dataset.
 
-train.py                  # Standaard training script
-examples/
-├── example1_generation.py       # Basis tekstgeneratie
-├── example2_custom_training.py  # Custom modelgroottes
-└── example3_instruction_training.py  # Instruction-following
-```
+## Install And Import
 
-## 🚀 Snel Starten
-
-### Installatie
+From the repository root:
 
 ```bash
-# Vereisten
-pip install torch numpy
-
-# Library is klaar om te gebruiken (lokaal)
+pip install -e .
+pip install -r requirements.txt
 ```
 
-### Training
-
-```bash
-python train.py
-```
-
-Dit traint een model met default config:
-- 64 embedding dim
-- 2 transformer blokken
-- 100 epochs
-- Saved to `output/mini_gpt.pth`
-
-### Tekstgeneratie
-
-```bash
-python examples/example1_generation.py
-```
-
-## 🎯 Advanced Features (NEW!)
-
-### Repetition Penalty
+After installation, prefer top-level imports:
 
 ```python
-# Voorkomen van woord herhaling
-text = generator.generate_string(
-    "hello",
-    repetition_penalty=1.5  # 1.0=no penalty, 2.0=strong penalty
+from miniGPT import Config, prepare_data, build_model, build_trainer, load_model
+```
+
+If you run scripts directly inside this repository without installing the package, the older local import style also works:
+
+```python
+from src.miniGPT import Config, prepare_data, build_model, build_trainer, load_model
+```
+
+## Important Concepts
+
+MiniGPT checkpoints are PyTorch `.pth` files. A fully reusable checkpoint should contain:
+
+- model weights
+- optimizer state
+- config
+- `vocab`, `stoi`, and `itos`
+- tokenizer metadata when using SentencePiece
+- `block_size` and `vocab_size`
+
+For fine-tuning, keep the tokenizer and architecture compatible with the checkpoint. A checkpoint trained with one vocabulary should normally be fine-tuned with that same vocabulary, not a new tokenizer.
+
+## Example Data
+
+For quick tests, create small text files like these.
+
+General pretraining data:
+
+```text
+Machine learning is a field of artificial intelligence.
+Language models learn patterns from text.
+Transformers use attention to connect tokens in context.
+MiniGPT is a small educational GPT model.
+Training from scratch starts with random weights.
+```
+
+Fine-tuning data:
+
+```text
+<qa> question: what is MiniGPT? answer: MiniGPT is a small GPT-style language model library. </qa>
+<qa> question: what is fine-tuning? answer: Fine-tuning adapts a pretrained model to new data. </qa>
+<qa> question: when should I freeze layers? answer: Freeze layers when the new dataset is small. </qa>
+```
+
+Use plain `.txt` files for normal language-model training. The model learns next-token prediction, so instruction or Q/A examples should be formatted exactly how you want the model to see them.
+
+## Train A New Model From Scratch
+
+This script creates demo data, trains a new model with random weights, saves the checkpoint, and generates a small sample.
+
+Save as `examples/train_from_scratch_real.py` or run it in a notebook cell.
+
+```python
+from pathlib import Path
+import torch
+
+from miniGPT import Config, Generator, build_model, build_trainer, prepare_data
+
+
+project_dir = Path("runs/scratch_demo")
+project_dir.mkdir(parents=True, exist_ok=True)
+
+data_path = project_dir / "train.txt"
+data_path.write_text(
+    """
+    Machine learning is a field of artificial intelligence.
+    Language models learn patterns from text.
+    Transformers use attention to connect tokens in context.
+    MiniGPT is a small educational GPT model.
+    Training from scratch starts with random weights.
+    Fine-tuning adapts a pretrained model to a new dataset.
+    """ * 50,
+    encoding="utf-8",
 )
-```
-
-### Sampling Strategieën
-
-```python
-# Top-K sampling
-text = generator.generate_string(
-    prompt,
-    top_k=50  # Keep top 50 tokens
-)
-
-# Nucleus (Top-P) sampling
-text = generator.generate_string(
-    prompt,
-    top_p=0.9  # Cumulative probability threshold
-)
-
-# Combined
-text = generator.generate_string(
-    prompt,
-    temperature=1.2,
-    repetition_penalty=1.5,
-    top_p=0.9
-)
-```
-
-### Generalisatie Monitoring
-
-```python
-from gpt_lib import GeneralizationMonitor
-
-monitor = GeneralizationMonitor()
-for epoch in range(epochs):
-    train_loss = ...
-    val_loss = ...
-    monitor.update(train_loss, val_loss)
-
-print(monitor.get_report())  # Overfitting detection
-```
-
-### Early Stopping
-
-```python
-from gpt_lib import EarlyStopping
-
-early_stopper = EarlyStopping(patience=15, min_delta=1e-4)
-
-for epoch in range(epochs):
-    val_loss = validate()
-    if early_stopper.check(val_loss):
-        print("Stop training!")
-        break
-```
-
-### Regularisatie Techniques
-
-```python
-from gpt_lib import L2Regularization, LearningRateScheduler, LabelSmoothing
-
-# L2 Regularization
-l2_reg = L2Regularization(lambda_l2=1e-4)
-reg_loss = l2_reg.compute_loss(model)
-
-# Learning Rate Scheduling
-scheduler = LearningRateScheduler(optimizer, "cosine", total_epochs=100)
-scheduler.step(epoch)
-
-# Label Smoothing
-criterion = LabelSmoothing(num_classes=50000, smoothing=0.1)
-```
-
----
-
-## 📚 Library API
-
-### 1. **Config** - Configuratie Management
-
-```python
-from gpt_lib import Config
 
 config = Config(
     embed_dim=64,
-    block_size=8,
-    batch_size=64,
-    epochs=100,
-    learning_rate=1e-3,
     num_blocks=2,
-    model_path="output/model.pth",
-    data_path="data/data.txt",
-    device="cuda" if torch.cuda.is_available() else "cpu"
+    block_size=32,
+    batch_size=8,
+    num_epochs=5,
+    learning_rate=3e-4,
+    weight_decay=0.01,
+    dropout=0.1,
+    data_path=str(data_path),
+    model_path=str(project_dir / "scratch_model.pth"),
+    tokenizer_type="word",
+    max_vocab=2000,
+    validation_split=0.2,
+    early_stopping_patience=2,
+    early_stopping_min_delta=1e-4,
+    restore_best_model=True,
+    training_log_interval=10,
+    device="cuda" if torch.cuda.is_available() else "cpu",
 )
 
-# Print config
-print(config)
+# Load text, split train/validation, build tokenizer, and create DataLoaders.
+data = prepare_data(config)
+config.vocab_size = data.vocab_size
 
-# Access values
-print(config.embed_dim)
-```
+# Build a fresh randomly initialized MiniGPT model.
+model = build_model(config, vocab_size=data.vocab_size)
+trainer = build_trainer(model, config)
 
-### 2. **Tokenizer** - Tekst Verwerking
-
-```python
-from gpt_lib import Tokenizer
-
-# Create tokenizer
-tokenizer = Tokenizer(max_vocab=50000)
-
-# Build vocabulary from text
-text = "your training text here..."
-tokenizer.build(text)
-
-# Encode tekst naar indices
-tokens = text.split()
-encoded = tokenizer.encode(tokens)  # List of integers
-
-# Decode terug naar tekst
-decoded = tokenizer.decode(encoded)  # List of words
-decoded_str = tokenizer.decode_string(encoded)  # String
-
-# Get info
-vocab_size = tokenizer.get_vocab_size()
-
-# Save/Load vocab
-tokenizer.save_vocab("vocab.txt")
-tokenizer.load_vocab("vocab.txt")
-```
-
-### 3. **Dataset** - Data Handling
-
-```python
-from gpt_lib import create_dataloader
-
-# Create DataLoader
-loader = create_dataloader(
-    encoded_data=encoded,
-    block_size=8,
-    batch_size=64,
-    shuffle=True
+trainer.train(
+    data.train_loader,
+    config.num_epochs,
+    val_loader=data.val_loader,
+    early_stopping_patience=config.early_stopping_patience,
+    min_delta=config.early_stopping_min_delta,
 )
 
-# Use in training
-for x, y in loader:
-    # x: [batch, block_size]
-    # y: [batch, block_size]
-    pass
-```
-
-### 4. **MiniGPT** - Model
-
-```python
-from gpt_lib import MiniGPT
-import torch
-
-# Create model
-model = MiniGPT(
-    vocab_size=50001,
-    embed_dim=64,
-    block_size=8,
-    num_blocks=2
+tokenizer_metadata = (
+    data.tokenizer.to_checkpoint()
+    if hasattr(data.tokenizer, "to_checkpoint")
+    else None
 )
 
-# Move to device
-model = model.to("cpu")
-
-# Forward pass
-input_ids = torch.randint(0, 50001, (16, 8))  # [batch, seq_len]
-logits = model(input_ids)  # [batch, seq_len, vocab_size]
-
-# Get parameter count
-params = model.get_num_parameters()
-print(f"Total parameters: {params:,}")
-```
-
-### 5. **Trainer** - Training Management
-
-```python
-from gpt_lib import Trainer
-import torch.nn as nn
-
-# Create trainer
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
-criterion = nn.CrossEntropyLoss()
-trainer = Trainer(model, optimizer, criterion, config)
-
-# Train
-trainer.train(loader, epochs=100)
-
-# Save checkpoint
 trainer.save(
-    "output/model.pth",
-    vocab=tokenizer.vocab,
-    stoi=tokenizer.stoi,
-    itos=tokenizer.itos,
-    block_size=8,
-    vocab_size=50001
+    config,
+    vocab=data.tokenizer.vocab,
+    stoi=data.tokenizer.stoi,
+    itos=data.tokenizer.itos,
+    tokenizer_metadata=tokenizer_metadata,
 )
 
-# Load checkpoint
-if trainer.exists("output/model.pth"):
-    checkpoint = trainer.load("output/model.pth")
-```
-
-### 6. **Generator** - Text Generation
-
-```python
-from gpt_lib import Generator
-
-# Create generator
 generator = Generator(
     model=model,
-    stoi=tokenizer.stoi,
-    itos=tokenizer.itos,
-    block_size=8,
-    device="cpu"
+    stoi=data.tokenizer.stoi,
+    itos=data.tokenizer.itos,
+    block_size=config.block_size,
+    device=torch.device(config.device),
+    tokenizer=data.tokenizer,
 )
 
-# Generate tokens
-tokens = generator.generate(
-    start_text="hello world",
-    max_new_tokens=20,
-    temperature=1.0
+print(generator.generate_string("machine learning", max_new_tokens=30, top_p=0.9))
+print(f"Saved checkpoint: {config.model_path}")
+```
+
+Notes:
+
+- Use `num_epochs`, not `epochs`, when configuring the current `Config` class.
+- `trainer.save(config, ...)` saves to `config.model_path`.
+- Increase `max_vocab`, `block_size`, `embed_dim`, and `num_blocks` for serious training.
+- Use `tokenizer_type="sentencepiece"` for better subword handling on larger datasets.
+
+## Load A Pretrained MiniGPT Checkpoint
+
+Use `load_model()` when the checkpoint was saved in MiniGPT format with tokenizer data.
+
+```python
+from miniGPT import load_model
+
+loaded = load_model("runs/scratch_demo/scratch_model.pth")
+
+text = loaded.predict(
+    "machine learning",
+    max_new_tokens=50,
+    temperature=0.8,
+    repetition_penalty=1.2,
+    top_p=0.9,
 )
 
-# Generate string
-text = generator.generate_string(
-    start_text="hello world",
-    max_new_tokens=20,
-    temperature=1.0
-)
 print(text)
 ```
 
-## 💡 Use Cases & Voorbeelden
+`load_model()` returns a `LoadedModel` bundle:
 
-### Use Case 1: Standaard Training
+- `loaded.model`: the PyTorch model
+- `loaded.generator`: generation helper
+- `loaded.config`: checkpoint config
+- `loaded.predict(...)`: quick generation method
+
+## Fine-Tune A Pretrained MiniGPT Checkpoint
+
+Fine-tuning should reuse the checkpoint tokenizer. The helper below rebuilds a tokenizer object from the loaded checkpoint when needed.
+
+```python
+from pathlib import Path
+import torch
+
+from miniGPT import Tokenizer, build_trainer, load_model, prepare_data
+
+
+def tokenizer_from_loaded_model(loaded):
+    tokenizer = loaded.generator.tokenizer
+    if tokenizer is not None and hasattr(tokenizer, "encode"):
+        return tokenizer
+
+    # Fallback for word-token checkpoints loaded from stoi/itos.
+    tokenizer = Tokenizer(max_vocab=len(loaded.generator.stoi))
+    tokenizer.stoi = loaded.generator.stoi
+    tokenizer.itos = loaded.generator.itos
+    tokenizer.vocab = [
+        tokenizer.itos[i]
+        for i in range(len(tokenizer.itos))
+        if i in tokenizer.itos
+    ]
+    tokenizer.vocab_size = len(tokenizer.vocab)
+    return tokenizer
+
+
+project_dir = Path("runs/finetune_demo")
+project_dir.mkdir(parents=True, exist_ok=True)
+
+fine_tune_data_path = project_dir / "qa_data.txt"
+fine_tune_data_path.write_text(
+    """
+    <qa> question: what is MiniGPT? answer: MiniGPT is a small GPT-style language model library. </qa>
+    <qa> question: what is fine-tuning? answer: Fine-tuning adapts a pretrained model to new data. </qa>
+    <qa> question: when should I freeze layers? answer: Freeze layers when the new dataset is small. </qa>
+    """ * 80,
+    encoding="utf-8",
+)
+
+loaded = load_model("runs/scratch_demo/scratch_model.pth")
+tokenizer = tokenizer_from_loaded_model(loaded)
+
+config = loaded.config
+config.data_path = str(fine_tune_data_path)
+config.model_path = str(project_dir / "finetuned_model.pth")
+config.num_epochs = 3
+config.batch_size = 8
+config.learning_rate = 2e-5
+config.weight_decay = 0.01
+config.validation_split = 0.2
+config.vocab_size = len(loaded.generator.stoi)
+config.device = "cuda" if torch.cuda.is_available() else "cpu"
+config.use_discriminative_lr = True
+config.lr_multiplier = {
+    "embeddings": 0.1,
+    "blocks": 0.1,
+    "head": 1.0,
+}
+
+data = prepare_data(config, existing_tokenizer=tokenizer)
+
+model = loaded.model.to(torch.device(config.device))
+trainer = build_trainer(model, config)
+
+# Common strategy for small fine-tuning datasets.
+trainer.freeze_layers("blocks")
+
+trainer.train(
+    data.train_loader,
+    config.num_epochs,
+    val_loader=data.val_loader,
+    early_stopping_patience=2,
+    min_delta=1e-4,
+)
+
+tokenizer_metadata = (
+    tokenizer.to_checkpoint()
+    if hasattr(tokenizer, "to_checkpoint")
+    else None
+)
+
+trainer.save(
+    config,
+    vocab=tokenizer.vocab,
+    stoi=tokenizer.stoi,
+    itos=tokenizer.itos,
+    tokenizer_metadata=tokenizer_metadata,
+)
+
+print(f"Saved fine-tuned checkpoint: {config.model_path}")
+```
+
+After fine-tuning:
+
+```python
+from miniGPT import load_model
+
+model = load_model("runs/finetune_demo/finetuned_model.pth")
+print(model.predict("<qa> question: what is fine-tuning? answer:", max_new_tokens=40))
+```
+
+## Fine-Tune A Model Downloaded From Kaggle Or Another Source
+
+Kaggle is usually just a source for files. Download the model artifact first, then treat it as a local checkpoint.
+
+Recommended folder layout:
+
+```text
+external_models/
+  kaggle_author_model/
+    model.pth
+    README.md
+```
+
+### Case 1: The Kaggle File Is A MiniGPT Checkpoint
+
+If the downloaded `.pth` file contains MiniGPT keys such as `model_state_dict`, `config`, `stoi`, `itos`, and `vocab_size`, use the same fine-tuning flow as above:
+
+```python
+loaded = load_model("external_models/kaggle_author_model/model.pth")
+```
+
+Then reuse `loaded.model`, `loaded.config`, and the checkpoint tokenizer for fine-tuning.
+
+### Case 2: The Kaggle File Is A Raw PyTorch Checkpoint
+
+Some files only contain weights. Inspect the checkpoint first:
 
 ```python
 import torch
-from gpt_lib import Config, Tokenizer, create_dataloader, MiniGPT, Trainer
 
-# Config
-config = Config(embed_dim=64, epochs=50)
+try:
+    checkpoint = torch.load(
+        "external_models/kaggle_author_model/model.pth",
+        map_location="cpu",
+        weights_only=False,
+    )
+except TypeError:
+    checkpoint = torch.load(
+        "external_models/kaggle_author_model/model.pth",
+        map_location="cpu",
+    )
 
-# Data
-with open(config.data_path) as f:
-    text = f.read()
-tokenizer = Tokenizer()
-tokenizer.build(text)
-encoded = tokenizer.encode(text.split())
-
-# Model
-loader = create_dataloader(encoded, config.block_size, config.batch_size)
-model = MiniGPT(tokenizer.get_vocab_size(), config.embed_dim, config.block_size, config.num_blocks)
-
-# Train
-optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
-criterion = torch.nn.CrossEntropyLoss()
-trainer = Trainer(model, optimizer, criterion, config)
-trainer.train(loader, config.epochs)
-trainer.save(config.model_path, tokenizer.vocab, tokenizer.stoi, tokenizer.itos, config.block_size, tokenizer.get_vocab_size())
+print(checkpoint.keys() if isinstance(checkpoint, dict) else type(checkpoint))
 ```
 
-### Use Case 2: Ander Model Formaat
+If it has compatible MiniGPT weights under `model_state_dict`, `model`, or `state_dict`, you can load it manually:
 
 ```python
-# Train met groter model
+from miniGPT import Config, build_model
+
 config = Config(
-    embed_dim=256,        # 4x groter
-    num_blocks=8,         # 4x meer lagen
-    batch_size=32,        # Kleinere batches
-    epochs=200,
-    learning_rate=5e-4,
-    model_path="output/large_model.pth"
+    embed_dim=64,
+    num_blocks=2,
+    block_size=32,
+    vocab_size=2000,
+    device="cpu",
 )
 
-# Rest is hetzelfde! ✓
+model = build_model(config, vocab_size=config.vocab_size)
+state_dict = checkpoint
+if isinstance(checkpoint, dict):
+    state_dict = (
+        checkpoint.get("model_state_dict")
+        or checkpoint.get("model")
+        or checkpoint.get("state_dict")
+    )
+if state_dict is None:
+    state_dict = checkpoint
+
+model.load_state_dict(state_dict, strict=False)
 ```
 
-### Use Case 3: Instruction-Following
+After that, create a compatible tokenizer and use `build_trainer()` to fine-tune. If the checkpoint does not include tokenizer information, you must know which tokenizer was used originally. A model trained with unknown token IDs cannot be reliably fine-tuned or used for text generation.
+
+### Case 3: The External Model Is Not MiniGPT
+
+For Hugging Face causal language models, `UnifiedPipeline` can attempt to adapt weights into a MiniGPT model:
 
 ```python
-# Trainingsdata in format:
-# [INST] What is Python? [/INST] Python is a programming language...
+from pathlib import Path
+import torch
 
-# Alles gelijk, maar:
+from miniGPT import Config, StoppingCriteria, UnifiedPipeline, prepare_data
+
+
+project_dir = Path("runs/external_hf_demo")
+project_dir.mkdir(parents=True, exist_ok=True)
+
+data_path = project_dir / "domain_data.txt"
+data_path.write_text(
+    """
+    <qa> question: what is deployment? answer: Deployment is releasing software to users. </qa>
+    <qa> question: what is monitoring? answer: Monitoring tracks system behavior in production. </qa>
+    """ * 100,
+    encoding="utf-8",
+)
+
 config = Config(
-    block_size=16,        # Langere context
-    num_blocks=4,         # Meer capacity
-    epochs=100,
-    model_path="output/instruction_model.pth"
+    embed_dim=128,
+    num_blocks=4,
+    block_size=64,
+    batch_size=8,
+    num_epochs=2,
+    learning_rate=2e-5,
+    tokenizer_type="sentencepiece",
+    max_vocab=8000,
+    data_path=str(data_path),
+    model_path=str(project_dir / "adapted_finetuned.pth"),
+    validation_split=0.2,
+    device="cuda" if torch.cuda.is_available() else "cpu",
+    use_discriminative_lr=True,
 )
 
-# Training code identiek!
-```
+data = prepare_data(config)
+config.vocab_size = data.vocab_size
 
-### Use Case 4: Fine-tuning op Bestaand Model
-
-```python
-# Load checkpoint
-checkpoint = trainer.load("output/model.pth")
-model.load_state_dict(checkpoint["model_state_dict"])
-
-# Continue training met nieuwe data
-new_optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4)  # Lower LR
-trainer_new = Trainer(model, new_optimizer, criterion, config)
-trainer_new.train(new_loader, epochs=20)
-
-trainer_new.save("output/finetuned_model.pth", ...)
-```
-
-## 🎯 Advanced Features
-
-### Custom Data Processing
-
-```python
-from gpt_lib import Tokenizer
-
-tokenizer = Tokenizer(max_vocab=100000)
-
-# Build on multiple files
-combined_text = ""
-for file in ["data1.txt", "data2.txt", "data3.txt"]:
-    with open(file) as f:
-        combined_text += f.read() + " "
-
-tokenizer.build(combined_text)
-```
-
-### Model Evaluation
-
-```python
-# Bereken loss op validation set
-model.eval()
-val_loss = 0
-with torch.no_grad():
-    for x, y in val_loader:
-        logits = model(x)
-        loss = criterion(logits.view(-1, vocab_size), y.view(-1))
-        val_loss += loss.item()
-
-avg_val_loss = val_loss / len(val_loader)
-print(f"Validation Loss: {avg_val_loss:.4f}")
-```
-
-### Batch Generation
-
-```python
-# Generate multiple samples
-prompts = [
-    "machine learning",
-    "artificial intelligence",
-    "deep learning"
-]
-
-for prompt in prompts:
-    text = generator.generate_string(prompt, max_new_tokens=15)
-    print(f"{prompt} -> {text}")
-```
-
-## 📊 Voorbeeld Outputs
-
-### Model Stats
-```
-Config(
-  embed_dim: 64
-  block_size: 8
-  batch_size: 64
-  epochs: 100
-  learning_rate: 0.001
-  num_blocks: 2
-  model_path: output/mini_gpt.pth
-  data_path: data/data.txt
-  max_vocab: 50000
-  max_data_size: 1000000
-  device: cpu
+pipeline = UnifiedPipeline(
+    config=config,
+    mode="fine_tuning",
+    pretrained_source="gpt2",
+    stopping_criteria=StoppingCriteria(
+        early_stopping_patience=2,
+        early_stopping_min_delta=1e-4,
+    ),
 )
 
-Parameters: 649,201
+pipeline.build(vocab_size=data.vocab_size)
+results = pipeline.train(
+    data.train_loader,
+    val_loader=data.val_loader,
+    num_epochs=config.num_epochs,
+)
+
+pipeline.save_checkpoint(config.model_path)
+print(results)
 ```
 
-### Training Output
-```
-Epoch 1/100: Loss = 10.2341 | Time = 38.42s
-Epoch 2/100: Loss = 9.1234 | Time = 37.89s
-...
-Epoch 100/100: Loss = 2.1234 | Time = 35.21s
+This is an adaptation path, not a guarantee that every external architecture maps cleanly. For production work, inspect the loading logs and evaluate the output carefully.
 
-✓ Training completed in 0h 59m 15s
-✓ Model saved to output/mini_gpt.pth
-```
+## Choosing A Fine-Tuning Strategy
 
-### Generation Output
-```
-Prompt: 'english is'
-Temp 0.5: english is a simple and powerful language for programming
-Temp 1.0: english is the most common language used in computer science
-Temp 1.5: english is like mathematical structure programming very complex modern
+Use these defaults as a starting point:
 
-Generation time: 0.23s
+```python
+config.learning_rate = 2e-5
+config.num_epochs = 3
+config.batch_size = 8
+config.use_discriminative_lr = True
+config.lr_multiplier = {
+    "embeddings": 0.1,
+    "blocks": 0.1,
+    "head": 1.0,
+}
 ```
 
-## 🔧 Troubleshooting
+Layer freezing:
 
-### Out of Memory
-- Verklein `batch_size` (64 → 32)
-- Verklein `embed_dim` (64 → 32)
-- Verklein `block_size` (8 → 4)
+```python
+# Very small dataset: train mostly the output head.
+trainer.freeze_layers("embedding")
+trainer.freeze_layers("blocks")
 
-### Slow Training
-- Verhoog `batch_size` voor snellere processing
-- Gebruik GPU (`device="cuda"`)
-- Verklein dataset (`max_data_size`)
+# Small/medium dataset: keep embeddings trainable but freeze transformer blocks.
+trainer.freeze_layers("blocks")
 
-### Bad Generated Text
-- Meer training epochs
-- Groter model (meer `num_blocks`)
-- Betere trainingsdata
+# Larger dataset: train all layers with a low learning rate.
+trainer.unfreeze_layers(None)
+```
 
-## 📖 Documentatie Links
+Check trainable parameters:
 
-- [PyTorch Documentation](https://pytorch.org)
-- [Attention is All You Need](https://arxiv.org/abs/1706.03762)
-- [Language Models are Unsupervised Multitask Learners](https://arxiv.org/abs/1905.04467)
+```python
+info = trainer.get_frozen_layers_info()
+print(info)
+```
 
-## 📚 Advanced Features Documentation
+## Tokenizer Guidance
 
-Voor volledige documentatie over repetition penalty, sampling, en generalisatie:
-→ Zie [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md)
+Use `tokenizer_type="word"` for tiny educational runs:
 
-## 📝 Licentie
+```python
+config = Config(tokenizer_type="word", max_vocab=5000)
+```
 
-MIT License - Vrij te gebruiken en aan te passen
+Use `tokenizer_type="sentencepiece"` for real datasets:
 
----
+```python
+config = Config(
+    tokenizer_type="sentencepiece",
+    sentencepiece_model_type="bpe",
+    max_vocab=16000,
+)
+```
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-06-08
+When continuing or fine-tuning a checkpoint, reuse the checkpoint tokenizer. Changing tokenizers changes token IDs and usually makes the old weights meaningless.
+
+## Saving And Loading Checklist
+
+When saving after direct training or fine-tuning:
+
+```python
+trainer.save(
+    config,
+    vocab=tokenizer.vocab,
+    stoi=tokenizer.stoi,
+    itos=tokenizer.itos,
+    tokenizer_metadata=tokenizer.to_checkpoint(),
+)
+```
+
+When loading for inference:
+
+```python
+loaded = load_model("path/to/model.pth")
+print(loaded.predict("your prompt", max_new_tokens=80))
+```
+
+## Common Problems
+
+`AttributeError: Config has no attribute epochs`
+
+Use `config.num_epochs`. The current `Config` class stores the training length as `num_epochs`.
+
+`ValueError: checkpoint is missing stoi or itos`
+
+The checkpoint does not contain tokenizer mappings. You need the original tokenizer files or a converted MiniGPT checkpoint.
+
+`size mismatch` while loading weights
+
+The checkpoint architecture does not match the config. Check `embed_dim`, `num_blocks`, `block_size`, and `vocab_size`.
+
+Generated text is poor after fine-tuning
+
+Use more data, lower the learning rate, train for a few more epochs, and make sure the prompt format matches the fine-tuning examples.
+
+Out of memory
+
+Lower `batch_size`, `block_size`, `embed_dim`, or `num_blocks`.
+
+## Minimal Workflow Summary
+
+Train from scratch:
+
+```python
+data = prepare_data(config)
+config.vocab_size = data.vocab_size
+model = build_model(config, data.vocab_size)
+trainer = build_trainer(model, config)
+trainer.train(data.train_loader, config.num_epochs, val_loader=data.val_loader)
+trainer.save(config, vocab=data.tokenizer.vocab, stoi=data.tokenizer.stoi, itos=data.tokenizer.itos)
+```
+
+Load and predict:
+
+```python
+loaded = load_model("model.pth")
+print(loaded.predict("hello", max_new_tokens=50))
+```
+
+Fine-tune:
+
+```python
+loaded = load_model("base_model.pth")
+model = loaded.model
+config = loaded.config
+config.data_path = "new_data.txt"
+config.model_path = "fine_tuned_model.pth"
+config.learning_rate = 2e-5
+config.num_epochs = 3
+```
+
+Then prepare data with the checkpoint tokenizer, train with `build_trainer()`, and save a new checkpoint.

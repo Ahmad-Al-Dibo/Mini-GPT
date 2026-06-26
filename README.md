@@ -1,30 +1,42 @@
 # ArcLM
 
-ArcLM is a compact PyTorch library for training, loading, generating with, and fine-tuning small causal language models.
+ArcLM is a lightweight PyTorch library for training, fine-tuning, and generating text with compact causal language models.
 
-It is designed for learning, experiments, and small local workflows rather than serving giant production LLMs.
+It is designed for learning, experimentation, research, and local AI workflows.
 
-## Install From Source
+## Features
+
+* Train compact causal language models from your own text
+* Generate text with a simple API
+* Fine-tune existing ArcLM checkpoints
+* Lightweight and easy to understand
+* Built on PyTorch
+
+## Installation
+
+Install ArcLM from PyPI:
 
 ```bash
-pip install -e .
+pip install arclm
 ```
 
-For development and packaging:
+Or install the latest development version:
 
 ```bash
+git clone https://github.com/Ahmad-Al-Dibo/ArcLM.git
+cd ArcLM
 pip install -e ".[dev]"
 ```
 
-## Quick Training Run
+## Quick Start
+
+Train a model:
 
 ```bash
 python train.py
 ```
 
-The default training script reads `data/data.txt` and saves a checkpoint to `models/arclm.pth`.
-
-## Generate Text
+Generate text:
 
 ```python
 from arclm import load_model
@@ -33,45 +45,30 @@ model = load_model("models/arclm.pth")
 print(model.predict("machine learning", max_new_tokens=50))
 ```
 
-## Repository Layout
+## Documentation
+
+The complete documentation is available in **docs/USAGE.md**.
+
+It includes:
+
+* Training a model from scratch
+* Loading saved checkpoints
+* Fine-tuning existing ArcLM models
+* Working with external checkpoints
+* Configuration options
+* Best practices and notes
+
+## Project Structure
 
 ```text
-arclm/              library source code
-data/data.txt       tiny sample dataset for smoke training
-examples/           minimal runnable usage example
-tests/              focused smoke tests
-docs/USAGE.md       training, loading, and fine-tuning guide
-models/             local checkpoints, ignored except .gitkeep
+arclm/              Library source code
+data/               Example datasets
+docs/               Documentation
+examples/           Example scripts
+models/             Local checkpoints
+tests/              Tests
 ```
 
-## Build For PyPI
+## License
 
-```bash
-python -m build
-twine check dist/*
-```
-
-Upload to TestPyPI first:
-
-```bash
-twine upload --repository testpypi dist/*
-```
-
-Then upload to PyPI:
-
-```bash
-twine upload dist/*
-```
-
-## Main APIs
-
-- `Config` / `create_config`
-- `prepare_data`
-- `build_model`
-- `build_trainer`
-- `Trainer`
-- `Generator`
-- `load_model`
-- `UnifiedPipeline`
-
-See [docs/USAGE.md](docs/USAGE.md) for full usage examples, including fine-tuning a checkpoint and working with external model files.
+ArcLM is licensed under the Apache License 2.0. See the LICENSE file for details.

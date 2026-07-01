@@ -52,6 +52,8 @@ class Config:
             "sentencepiece"
                 Subword tokenizer (recommended).
                 Better generalization and handles unknown words.
+                user_defined_symbols: list of special tokens to include in the tokenizer
+                    example: ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"]
 
         sentencepiece_model_type:
             "bpe" (default) or "unigram"
@@ -88,6 +90,7 @@ class Config:
         self.num_blocks = kwargs.get("num_blocks", 2)
         self.model_path = kwargs.get("model_path", "output/model.pth")
         self.tokenizer_path = kwargs.get("tokenizer_path", "output/tokenizer.model")
+        self.user_defined_symbols = kwargs.get("user_defined_symbols", ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"])
         self.data_path = kwargs.get("data_path", "data/data.txt")
         self.domain_data_path = kwargs.get("domain_data_path", None)
         self.domain_data_repeats = kwargs.get("domain_data_repeats", 1)
@@ -115,6 +118,7 @@ class Config:
         self.diagnostic_sample_tokens = kwargs.get("diagnostic_sample_tokens", 60)
         self.tokenizer_rare_threshold = kwargs.get("tokenizer_rare_threshold", 2)
         self.training_log_interval = kwargs.get("training_log_interval", 50)
+        self.metrics_log_path = kwargs.get("metrics_log_path", None)
         self.run_long_context_evaluation = kwargs.get("run_long_context_evaluation", False)
         self.use_checkpoint_tokenizer = kwargs.get("use_checkpoint_tokenizer", False)
         self.long_context_block_sizes = kwargs.get(
@@ -131,6 +135,8 @@ class Config:
         self.lr_scheduler_strategy = kwargs.get("lr_scheduler_strategy", "cosine")
         self.warmup_epochs = kwargs.get("warmup_epochs", 1)
         self.checkpoint_interval = kwargs.get("checkpoint_interval", 0)
+        self.checkpoint_batch_interval = kwargs.get("checkpoint_batch_interval", 0)
+        self.checkpoint_callback = kwargs.get("checkpoint_callback", None)
     
     def to_dict(self):
         """Convert config to dictionary"""
@@ -148,6 +154,7 @@ class Config:
             "model_path": self.model_path,
             "data_path": self.data_path,
             "tokenizer_path": self.tokenizer_path,
+            "user_defined_symbols": self.user_defined_symbols,
             "domain_data_path": self.domain_data_path,
             "domain_data_repeats": self.domain_data_repeats,
             "tokenizer_type": self.tokenizer_type,
@@ -168,9 +175,19 @@ class Config:
             "diagnostic_sample_tokens": self.diagnostic_sample_tokens,
             "tokenizer_rare_threshold": self.tokenizer_rare_threshold,
             "training_log_interval": self.training_log_interval,
+            "metrics_log_path": self.metrics_log_path,
             "run_long_context_evaluation": self.run_long_context_evaluation,
             "use_checkpoint_tokenizer": self.use_checkpoint_tokenizer,
             "long_context_block_sizes": self.long_context_block_sizes,
+            "freeze_backbone": self.freeze_backbone,
+            "freeze_embedding": self.freeze_embedding,
+            "use_discriminative_lr": self.use_discriminative_lr,
+            "lr_multiplier": self.lr_multiplier,
+            "use_lr_scheduler": self.use_lr_scheduler,
+            "lr_scheduler_strategy": self.lr_scheduler_strategy,
+            "warmup_epochs": self.warmup_epochs,
+            "checkpoint_interval": self.checkpoint_interval,
+            "checkpoint_batch_interval": self.checkpoint_batch_interval,
         }
 
 
@@ -241,6 +258,8 @@ def create_config(**kwargs) -> Config:
         Number of training epochs.
     tokenizer_path : str
         Path to save or load the tokenizer model.
+    user_defined_symbols: list
+        List of special tokens to include in the tokenizer.
     model_path : str
         Path to save or load the model checkpoint.
     device : str
@@ -304,6 +323,7 @@ def create_config(**kwargs) -> Config:
         "model_path": "output/model.pth",
         "data_path": "data/data.txt",
         "tokenizer_path": "output/tokenizer.model",
+        "user_defined_symbols": ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"],
 
         "domain_data_path": None,
         "domain_data_repeats": 1,
@@ -334,6 +354,7 @@ def create_config(**kwargs) -> Config:
         "diagnostic_sample_tokens": 60,
 
         "training_log_interval": 50,
+        "metrics_log_path": None,
 
         "run_long_context_evaluation": False,
         "use_checkpoint_tokenizer": False,
@@ -348,6 +369,8 @@ def create_config(**kwargs) -> Config:
         "lr_scheduler_strategy": "cosine",
         "warmup_epochs": 1,
         "checkpoint_interval": 0,
+        "checkpoint_batch_interval": 0,
+        "checkpoint_callback": None,
     }
 
     unknown = set(kwargs) - set(defaults)
@@ -371,6 +394,7 @@ def get_finetuning_config(
     use_discriminative_lr: bool = True,
     tokenizer_type: str = "sentencepiece",
     vocab_size: int = None,
+    user_defined_symbols= ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"],
     **kwargs
 ) -> Config:
     """Get config optimized for finetuning pretrained models.
@@ -387,6 +411,7 @@ def get_finetuning_config(
         learning_rate: Base learning rate (default 2e-5)
         freeze_backbone: Whether to freeze transformer blocks (default True)
         use_discriminative_lr: Use different LRs for different layers (default True)
+        user_defined_symbols: List of special tokens to include in the tokenizer (default ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"])
         **kwargs: Additional config parameters
     
     Returns:
@@ -404,6 +429,7 @@ def get_finetuning_config(
         vocab_size=vocab_size,
         freeze_backbone=freeze_backbone,
         use_discriminative_lr=use_discriminative_lr,
+        user_defined_symbols = user_defined_symbols,
         early_stopping_patience=3,
         early_stopping_min_delta=1e-4,
         restore_best_model=True,
@@ -421,6 +447,8 @@ def get_instruction_tuning_config(
     num_epochs: int = 5,
     batch_size: int = 16,
     learning_rate: float = 5e-5,
+    vocab_size: int = None,
+    user_defined_symbols = ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"],
     **kwargs
 ) -> Config:
     """Get config optimized for instruction tuning.
@@ -432,6 +460,7 @@ def get_instruction_tuning_config(
         num_epochs: Number of training epochs (default 5)
         batch_size: Batch size (default 16, smaller for smaller batch diversity)
         learning_rate: Base learning rate (default 5e-5)
+        user_defined_symbols: List of special tokens to include in the tokenizer (default ["<|qa_start|>", "<|res_start|>", "<|end|>", "<|pad|>"])
         **kwargs: Additional config parameters
     
     Returns:
@@ -446,6 +475,7 @@ def get_instruction_tuning_config(
         batch_size=batch_size,
         vocab_size=vocab_size,
         learning_rate=learning_rate,
+        user_defined_symbols = user_defined_symbols,
         freeze_backbone=True,
         use_discriminative_lr=True,
         **kwargs

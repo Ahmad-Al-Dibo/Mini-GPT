@@ -27,3 +27,5 @@ dataset/
 datasets/
 experiments/
 output/
+.env
+.env

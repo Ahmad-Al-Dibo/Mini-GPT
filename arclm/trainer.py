@@ -4,21 +4,31 @@ Trainer Module - Training loop and model management
 
 import time
 import copy
+import inspect
 import math
+import os
+import tempfile
+import warnings
 import torch
 from pathlib import Path
 from .config import Config
+from .logging import AsyncTrainingLogger
 
 
 class Trainer:
     """Model trainer with save/load functionality and generalization monitoring"""
     
-    def __init__(self, model, optimizer, criterion, config):
+    def __init__(self, model, optimizer, criterion, config, event_logger=None):
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
         self.config = config
         self.device = torch.device(config.device)
+        self.event_logger = event_logger
+        self._owns_event_logger = False
+        if self.event_logger is None and getattr(config, "metrics_log_path", None):
+            self.event_logger = AsyncTrainingLogger(config.metrics_log_path).start()
+            self._owns_event_logger = True
         self.train_losses = []
         self.val_losses = []
         self.val_perplexities = []
@@ -27,6 +37,8 @@ class Trainer:
         self.patience_counter = 0
         self.best_model_state_dict = None
         self.current_epoch = 0
+        self.current_batch = 0
+        self.global_step = 0
     
     def train(
         self,
@@ -36,6 +48,8 @@ class Trainer:
         early_stopping_patience=None,
         min_delta=None,
         checkpoint_callback=None,
+        checkpoint_epoch_interval=None,
+        checkpoint_batch_interval=None,
     ):
         """Train the model with optional validation and early stopping
         
@@ -45,8 +59,93 @@ class Trainer:
             val_loader: Validation DataLoader (optional)
             early_stopping_patience: Stop if val loss doesn't improve (optional)
             min_delta: Minimum validation loss improvement (optional)
-            checkpoint_callback: Optional callable run after each completed epoch
+            checkpoint_callback: Optional callable used for checkpoint saves
+            checkpoint_epoch_interval: Save every N completed epochs (optional)
+            checkpoint_batch_interval: Save every N training batches (optional)
         """
+        if loader is None:
+            warnings.warn(
+                "No training loader was provided; training cannot start.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            raise ValueError("loader is required for training.")
+
+        if epochs is None:
+            warnings.warn(
+                "No epoch count was provided. Pass epochs or config.num_epochs.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            raise ValueError("epochs is required for training.")
+
+        if epochs <= 0:
+            warnings.warn(
+                f"epochs must be greater than zero; got {epochs}.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return
+
+        try:
+            loader_batches = len(loader)
+        except TypeError:
+            loader_batches = None
+
+        if loader_batches == 0:
+            warnings.warn(
+                "The training loader has no batches; nothing will be trained.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return
+
+        checkpoint_epoch_interval = self._resolve_checkpoint_interval(
+            checkpoint_epoch_interval,
+            getattr(self.config, "checkpoint_interval", None),
+        )
+        checkpoint_batch_interval = self._resolve_checkpoint_interval(
+            checkpoint_batch_interval,
+            getattr(self.config, "checkpoint_batch_interval", None),
+        )
+
+        if checkpoint_callback is None:
+            checkpoint_callback = getattr(self.config, "checkpoint_callback", None)
+
+        if (
+            checkpoint_callback is not None
+            and checkpoint_epoch_interval == 0
+            and checkpoint_batch_interval == 0
+        ):
+            checkpoint_epoch_interval = 1
+
+        if checkpoint_callback is None and (
+            checkpoint_epoch_interval > 0 or checkpoint_batch_interval > 0
+        ):
+            checkpoint_callback = self._default_checkpoint_callback
+
+        if checkpoint_epoch_interval == 0 and checkpoint_batch_interval == 0:
+            warnings.warn(
+                "No checkpoint interval is configured. Automatic model saving is disabled; "
+                "set checkpoint_interval for epochs or checkpoint_batch_interval for batches.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        if early_stopping_patience is None:
+            warnings.warn(
+                "Early stopping is disabled because early_stopping_patience is not set.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        elif val_loader is None:
+            warnings.warn(
+                "early_stopping_patience was set, but no val_loader was provided; "
+                "early stopping will be ignored.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
         if self.current_epoch >= epochs:
             print(
                 f"\n[OK] Training already complete "
@@ -54,10 +153,20 @@ class Trainer:
             )
             if val_loader is not None and getattr(self.config, "restore_best_model", True):
                 self.restore_best_model()
+            if self._owns_event_logger and self.event_logger is not None:
+                self.event_logger.close()
+                self.event_logger = None
             return
 
         self.model.train()
         train_start = time.time()
+        if self.event_logger is not None:
+            self.event_logger.info(
+                "training_started",
+                epochs=epochs,
+                current_epoch=self.current_epoch,
+                device=str(self.device),
+            )
         if min_delta is None:
             min_delta = getattr(self.config, "early_stopping_min_delta", 0.0)
         
@@ -68,9 +177,11 @@ class Trainer:
             epoch_start = time.time()
             total_loss = 0
             log_interval = getattr(self.config, "training_log_interval", 50)
-            total_batches = len(loader)
+            total_batches = loader_batches if loader_batches is not None else "?"
+            batches_seen = 0
             
             for batch_idx, (x, y) in enumerate(loader, start=1):
+                batches_seen = batch_idx
                 x = x.to(self.device)
                 y = y.to(self.device)
                 
@@ -90,11 +201,31 @@ class Trainer:
                 self.optimizer.step()
                 
                 total_loss += loss.item()
+                self.current_batch = batch_idx
+                self.global_step += 1
+
+                if (
+                    checkpoint_batch_interval > 0
+                    and checkpoint_callback is not None
+                    and self.global_step % checkpoint_batch_interval == 0
+                ):
+                    self._call_checkpoint_callback(
+                        checkpoint_callback,
+                        event="batch_checkpoint",
+                        epoch=epoch + 1,
+                        batch=batch_idx,
+                        total_batches=total_batches,
+                        global_step=self.global_step,
+                    )
 
                 if log_interval and batch_idx % log_interval == 0:
                     elapsed = time.time() - epoch_start
                     batches_per_second = batch_idx / elapsed if elapsed else 0.0
-                    remaining_batches = total_batches - batch_idx
+                    remaining_batches = (
+                        total_batches - batch_idx
+                        if isinstance(total_batches, int)
+                        else 0
+                    )
                     eta_seconds = (
                         remaining_batches / batches_per_second
                         if batches_per_second
@@ -108,6 +239,16 @@ class Trainer:
                         f"ETA = {eta_seconds:.1f}s",
                         flush=True,
                     )
+                    if self.event_logger is not None:
+                        self.event_logger.metric(
+                            "batch_completed",
+                            epoch=epoch + 1,
+                            batch=batch_idx,
+                            total_batches=total_batches,
+                            loss=float(loss.item()),
+                            elapsed_seconds=elapsed,
+                            eta_seconds=eta_seconds,
+                        )
                     # try:
                     #     if checkpoint_callback is not None:
                     #         checkpoint_callback(self)
@@ -116,7 +257,14 @@ class Trainer:
 
             
             # Average training loss
-            avg_train_loss = total_loss / len(loader)
+            if batches_seen == 0:
+                warnings.warn(
+                    "The training loader yielded no batches; stopping training.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                break
+            avg_train_loss = total_loss / batches_seen
             self.train_losses.append(avg_train_loss)
             
             epoch_time = time.time() - epoch_start
@@ -143,6 +291,17 @@ class Trainer:
                     f"Gen Gap = {gen_gap:.4f} | "
                     f"Time = {epoch_time:.2f}s"
                 )
+                if self.event_logger is not None:
+                    self.event_logger.metric(
+                        "epoch_completed",
+                        epoch=epoch + 1,
+                        train_loss=float(avg_train_loss),
+                        val_loss=float(val_loss),
+                        val_perplexity=float(val_metrics["perplexity"]),
+                        val_token_accuracy=float(val_metrics["token_accuracy"]),
+                        generalization_gap=float(gen_gap),
+                        epoch_seconds=epoch_time,
+                    )
                 
                 # Early stopping
                 if early_stopping_patience is not None:
@@ -158,10 +317,28 @@ class Trainer:
                     f"Loss = {avg_train_loss:.4f} | "
                     f"Time = {epoch_time:.2f}s"
                 )
+                if self.event_logger is not None:
+                    self.event_logger.metric(
+                        "epoch_completed",
+                        epoch=epoch + 1,
+                        train_loss=float(avg_train_loss),
+                        epoch_seconds=epoch_time,
+                    )
 
             self.current_epoch = epoch + 1
-            if checkpoint_callback is not None:
-                checkpoint_callback(self)
+            if (
+                checkpoint_epoch_interval > 0
+                and checkpoint_callback is not None
+                and self.current_epoch % checkpoint_epoch_interval == 0
+            ):
+                self._call_checkpoint_callback(
+                    checkpoint_callback,
+                    event="epoch_checkpoint",
+                    epoch=self.current_epoch,
+                    batch=self.current_batch,
+                    total_batches=total_batches,
+                    global_step=self.global_step,
+                )
 
             if should_stop:
                 break
@@ -173,6 +350,15 @@ class Trainer:
         if val_loader is not None and getattr(self.config, "restore_best_model", True):
             self.restore_best_model()
         print(f"\n[OK] Training completed in {hours}h {minutes}m {seconds}s")
+        if self.event_logger is not None:
+            self.event_logger.info(
+                "training_completed",
+                epochs_completed=self.current_epoch,
+                total_seconds=total_train_time,
+            )
+        if self._owns_event_logger and self.event_logger is not None:
+            self.event_logger.close()
+            self.event_logger = None
     
     def _validate(self, val_loader):
         """Bereken validation loss, perplexity, en token accuracy."""
@@ -249,6 +435,63 @@ class Trainer:
             return True
         return False
 
+    def _resolve_checkpoint_interval(self, explicit_value, config_value):
+        """Normalize optional checkpoint intervals to non-negative integers."""
+        value = explicit_value if explicit_value is not None else config_value
+        if value in (None, False):
+            return 0
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            warnings.warn(
+                f"Invalid checkpoint interval {value!r}; automatic checkpointing is disabled.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return 0
+        if value < 0:
+            warnings.warn(
+                f"Checkpoint interval must be >= 0; got {value}. Disabling it.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return 0
+        return value
+
+    def _default_checkpoint_callback(self, trainer, **_context):
+        """Save a bare trainer checkpoint when no custom callback is provided."""
+        trainer.save(trainer.config)
+
+    def _call_checkpoint_callback(self, checkpoint_callback, **context):
+        """Call checkpoint callbacks while keeping old one-argument callbacks valid."""
+        try:
+            signature = inspect.signature(checkpoint_callback)
+        except (TypeError, ValueError):
+            checkpoint_callback(self, **context)
+            return
+
+        parameters = list(signature.parameters.values())
+        accepts_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters
+        )
+        positional_params = [
+            parameter
+            for parameter in parameters
+            if parameter.kind
+            in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ]
+
+        if accepts_kwargs:
+            checkpoint_callback(self, **context)
+        elif len(positional_params) >= 2:
+            checkpoint_callback(self, context)
+        else:
+            checkpoint_callback(self)
+
     def restore_best_model(self):
         """Restore weights from the best validation loss, if available."""
         if self.best_model_state_dict is not None:
@@ -286,7 +529,8 @@ class Trainer:
                     print(f"  Froze: {name}")
         
         total = sum(1 for _ in self.model.parameters())
-        print(f"✓ Frozen {frozen_count}/{total} parameters")
+        if verbose:
+            print(f"[OK] Frozen {frozen_count}/{total} parameters")
         return frozen_count
     
     def unfreeze_layers(self, pattern: str = None, verbose: bool = True) -> int:
@@ -336,6 +580,8 @@ class Trainer:
             "best_val_loss": self.best_val_loss,
             "patience_counter": self.patience_counter,
             "current_epoch": self.current_epoch,
+            "current_batch": self.current_batch,
+            "global_step": self.global_step,
         }
     
     def save(
@@ -360,12 +606,28 @@ class Trainer:
             "block_size": config.block_size,
             "vocab_size": config.vocab_size,
             "current_epoch": self.current_epoch,
+            "current_batch": self.current_batch,
+            "global_step": self.global_step,
             "patience_counter": self.patience_counter,
             "best_val_loss": self.best_val_loss,
             "best_model_state_dict": self.best_model_state_dict,
             "train_history": self.get_train_history(),
         }
-        torch.save(checkpoint, config.model_path)
+        model_path = Path(config.model_path)
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=model_path.parent,
+                prefix=f".{model_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                temp_path = Path(temp_file.name)
+            torch.save(checkpoint, temp_path)
+            os.replace(temp_path, model_path)
+        finally:
+            if temp_path is not None and temp_path.exists():
+                temp_path.unlink()
         print(f"[OK] Model saved to {config.model_path}")
     
     def load(self, model_path):
@@ -384,8 +646,12 @@ class Trainer:
             self.best_val_loss = history.get("best_val_loss", float('inf'))
             self.patience_counter = history.get("patience_counter", 0)
             self.current_epoch = history.get("current_epoch", len(self.train_losses))
+            self.current_batch = history.get("current_batch", 0)
+            self.global_step = history.get("global_step", 0)
 
         self.current_epoch = checkpoint.get("current_epoch", self.current_epoch)
+        self.current_batch = checkpoint.get("current_batch", self.current_batch)
+        self.global_step = checkpoint.get("global_step", self.global_step)
         self.patience_counter = checkpoint.get("patience_counter", self.patience_counter)
         self.best_val_loss = checkpoint.get("best_val_loss", self.best_val_loss)
         self.best_model_state_dict = checkpoint.get("best_model_state_dict")

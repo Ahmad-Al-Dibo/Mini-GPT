@@ -13,9 +13,10 @@ import sentencepiece as spm
 class Tokenizer:
     """Tokenizer for converting text to token indices and back"""
     
-    def __init__(self, max_vocab=50000, default_token="<UNK>"):
+    def __init__(self, max_vocab=50000, default_token="<UNK>", user_defined_symbols=None):
         self.max_vocab = max_vocab
         self.default_token = default_token
+        self.user_defined_symbols = list(user_defined_symbols or [])
         self.vocab = None
         self.stoi = None  # string to index
         self.itos = None  # index to string
@@ -28,9 +29,18 @@ class Tokenizer:
         token_counts = Counter(tokens)
         self.token_counts = token_counts
         
-        # Keep top max_vocab tokens
-        most_common = token_counts.most_common(self.max_vocab - 1)
-        self.vocab = [self.default_token] + [token for token, _ in most_common]
+        reserved = []
+        for token in self.user_defined_symbols:
+            if token and token != self.default_token and token not in reserved:
+                reserved.append(token)
+
+        remaining_vocab = max(self.max_vocab - 1 - len(reserved), 0)
+        most_common = [
+            token
+            for token, _ in token_counts.most_common()
+            if token != self.default_token and token not in reserved
+        ][:remaining_vocab]
+        self.vocab = [self.default_token] + reserved[: max(self.max_vocab - 1, 0)] + most_common
         
         self.stoi = {word: i for i, word in enumerate(self.vocab)}
         self.itos = {i: word for word, i in self.stoi.items()}
@@ -131,6 +141,7 @@ class Tokenizer:
         return {
             "tokenizer_type": "word",
             "max_vocab": self.max_vocab,
+            "user_defined_symbols": self.user_defined_symbols,
         }
 
     def to_json(self):
@@ -138,39 +149,57 @@ class Tokenizer:
         return {
             "tokenizer_type": "word",
             "max_vocab": self.max_vocab,
+            "user_defined_symbols": self.user_defined_symbols,
             "vocab_size": self.vocab_size,
             "vocab": self.vocab,
             "token_counts": dict(self.token_counts),
         }
+    
+    def save(self, path):
+        """Save tokenizer to a JSON file."""
+        metadata = self.to_json()
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=4)
+        
+        return {
+            "vocab_size": self.vocab_size,
+            "vocab": self.vocab,
+            "stoi": self.stoi,
+            "itos": self.itos
+        }
 
-        @classmethod
-        def from_json(cls, data):
-            tokenizer = cls(max_vocab=data["max_vocab"])
+    @classmethod
+    def from_json(cls, data):
+        """Load a word tokenizer from JSON-compatible dict."""
+        tokenizer = cls(
+            max_vocab=data["max_vocab"],
+            user_defined_symbols=data.get("user_defined_symbols"),
+        )
 
-            tokenizer.vocab = data["vocab"]
-            tokenizer.vocab_size = data["vocab_size"]
+        tokenizer.vocab = data["vocab"]
+        tokenizer.vocab_size = data["vocab_size"]
 
-            tokenizer.stoi = {
-                token: idx
-                for idx, token in enumerate(tokenizer.vocab)
-            }
+        tokenizer.stoi = {
+            token: idx
+            for idx, token in enumerate(tokenizer.vocab)
+        }
 
-            tokenizer.itos = {
-                idx: token
-                for idx, token in enumerate(tokenizer.vocab)
-            }
+        tokenizer.itos = {
+            idx: token
+            for idx, token in enumerate(tokenizer.vocab)
+        }
 
-            tokenizer.token_counts = Counter(
-                data.get("token_counts", {})
-            )
+        tokenizer.token_counts = Counter(
+            data.get("token_counts", {})
+        )
 
-            return tokenizer
+        return tokenizer
 
 
 class SentencePieceTokenizer:
     """SentencePiece BPE tokenizer for subword language-model training."""
 
-    def __init__(self, max_vocab=50000, model_type="bpe", character_coverage=1.0, default_token="<UNK>", model_name=None):
+    def __init__(self, max_vocab=50000, model_type="bpe", character_coverage=1.0, default_token="<UNK>", model_name=None, user_defined_symbols=None,):
         self.max_vocab = max_vocab
         self.model_type = model_type
         self.model_name = model_name
@@ -182,6 +211,12 @@ class SentencePieceTokenizer:
         self.itos = None
         self.vocab_size = 0
         self.token_counts = Counter()
+        self.user_defined_symbols=[
+        "<|qa_start|>",
+        "<|res_start|>",
+        "<|end|>",
+        "<|pad|>",
+    ] if user_defined_symbols is None else user_defined_symbols
 
     def _format_training_text(self, text, max_line_length=4000):
         """Wrap training text so SentencePiece does not skip oversized lines."""
@@ -230,17 +265,25 @@ class SentencePieceTokenizer:
             model_prefix = tmpdir_path / "sentencepiece_tokenizer"
             input_path.write_text(self._format_training_text(text), encoding="utf-8")
 
+            user_defined_symbols = [
+                token
+                for token in self.user_defined_symbols
+                if token and token != "<|pad|>"
+            ]
+
             spm.SentencePieceTrainer.train(
                 input=str(input_path),
                 model_prefix=str(model_prefix),
                 vocab_size=self.max_vocab,
                 model_type=self.model_type,
                 character_coverage=self.character_coverage,
+                user_defined_symbols=user_defined_symbols,
                 hard_vocab_limit=False,
                 unk_id=0,
                 bos_id=-1,
                 eos_id=-1,
-                pad_id=-1,
+                pad_id=1,
+                pad_piece="<|pad|>",
             )
             self.processor.load(str(model_prefix) + ".model")
 
@@ -253,6 +296,7 @@ class SentencePieceTokenizer:
             "max_vocab": self.max_vocab,
             "model_type": self.model_type,
             "character_coverage": self.character_coverage,
+            "user_defined_symbols": self.user_defined_symbols,
             "model_proto": self.processor.serialized_model_proto(),
         }
 
@@ -263,6 +307,7 @@ class SentencePieceTokenizer:
             max_vocab=metadata.get("max_vocab", 50000),
             model_type=metadata.get("model_type", "bpe"),
             character_coverage=metadata.get("character_coverage", 1.0),
+            user_defined_symbols=metadata.get("user_defined_symbols"),
         )
         model_proto = metadata.get("model_proto")
         if not model_proto:
@@ -287,9 +332,9 @@ class SentencePieceTokenizer:
         """Encode tokens by joining them back into text first."""
         return self.encode_text(" ".join(token for token in tokens if token))
 
-    def encode_text(self, text):
+    def encode_text(self, text, out_type=int):
         """Encode raw text to SentencePiece token IDs."""
-        return self.processor.encode(text, out_type=int)
+        return self.processor.encode(text, out_type=out_type)
 
     def decode(self, indices):
         """Decode IDs to SentencePiece pieces."""
@@ -326,6 +371,7 @@ class SentencePieceTokenizer:
             "max_vocab": self.max_vocab,
             "model_type": self.model_type,
             "character_coverage": self.character_coverage,
+            "user_defined_symbols": self.user_defined_symbols,
             "vocab_size": self.vocab_size,
             "model_proto": base64.b64encode(
                 self.processor.serialized_model_proto()
@@ -346,6 +392,7 @@ class SentencePieceTokenizer:
             "itos": self.itos
         }
 
+    @classmethod
     def from_json(cls, data):
         """Load SentencePiece tokenizer from JSON-compatible dict."""
         tokenizer = cls(
@@ -353,6 +400,7 @@ class SentencePieceTokenizer:
             model_type=data["model_type"],
             character_coverage=data["character_coverage"],
             model_name=data.get("model_name"),
+            user_defined_symbols=data.get("user_defined_symbols"),
         )
         model_proto = base64.b64decode(data["model_proto"])
         tokenizer.processor.load_from_serialized_proto(model_proto)
@@ -370,6 +418,7 @@ class SentencePieceTokenizer:
             max_vocab=data["max_vocab"],
             model_type=data["model_type"],
             character_coverage=data["character_coverage"],
+            user_defined_symbols=data.get("user_defined_symbols"),
         )
         model_proto = base64.b64decode(
             data["model_proto"]
@@ -420,6 +469,7 @@ class SentencePieceTokenizer:
             "max_vocab": self.max_vocab,
             "model_type": self.model_type,
             "character_coverage": self.character_coverage,
+            "user_defined_symbols": self.user_defined_symbols,
             "vocab_size": self.vocab_size,
         }
 
@@ -467,7 +517,7 @@ def get_tokenizer_from_config(config):
         Tokenizer instance ready to use
     """
     tokenizer_type = getattr(config, 'tokenizer_type', 'word')
-    max_vocab = getattr(config, 'vocab_size', 50000)
+    max_vocab = getattr(config, 'vocab_size', None) or getattr(config, 'max_vocab', 50000)
     
     if tokenizer_type == "sentencepiece":
         model_type = getattr(config, 'sentencepiece_model_type', 'bpe')
@@ -476,9 +526,14 @@ def get_tokenizer_from_config(config):
             "sentencepiece",
             max_vocab=max_vocab,
             model_type=model_type,
-            character_coverage=character_coverage
+            character_coverage=character_coverage,
+            user_defined_symbols=getattr(config, "user_defined_symbols", None),
         )
     else:
-        return create_tokenizer("word", max_vocab=max_vocab)
+        return create_tokenizer(
+            "word",
+            max_vocab=max_vocab,
+            user_defined_symbols=getattr(config, "user_defined_symbols", None),
+        )
 
 

@@ -9,7 +9,8 @@ Example:
     >>> results = pipeline.train(train_loader, num_epochs=5)
 """
 
-__version__ = "0.1.0"
+from ._version import __version__
+
 __author__ = "ArcLM Contributors"
 __all__ = [
     # Core Configuration
@@ -20,6 +21,12 @@ __all__ = [
     "StoppingCriteria",
     "PreTrainedModelLoader",
     "ModelAdapter",
+    "train_model",
+    "load_external_model",
+    "adapt_for_training",
+    "SmartLoader",
+    "inspect_model_source",
+    "DataProcessor",
     
     # Tokenizers (P4-2)
     "create_tokenizer",
@@ -75,6 +82,24 @@ def __getattr__(name):
     elif name == "ModelAdapter":
         from .pipeline_v2 import ModelAdapter
         return ModelAdapter
+    elif name == "train_model":
+        from .pipeline import train_model
+        return train_model
+    elif name == "load_external_model":
+        from .loaders import load_external_model
+        return load_external_model
+    elif name == "adapt_for_training":
+        from .loaders import adapt_for_training
+        return adapt_for_training
+    elif name == "SmartLoader":
+        from .loaders import SmartLoader
+        return SmartLoader
+    elif name == "inspect_model_source":
+        from .loaders import inspect_model_source
+        return inspect_model_source
+    elif name == "DataProcessor":
+        from .data_processor import DataProcessor
+        return DataProcessor
     elif name == "create_tokenizer":
         from .tokenizer import create_tokenizer
         return create_tokenizer

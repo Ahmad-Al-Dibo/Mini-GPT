@@ -312,7 +312,7 @@ class ExperimentTracker:
             with open(metadata_file, "w") as f:
                 json.dump(self.metadata, f, indent=2)
             
-            print(f"✓ Experiment saved to: {self.exp_dir}")
+            print(f"[OK] Experiment saved to: {self.exp_dir}")
         
         elif self.backend == "mlflow":
             mlflow.end_run()

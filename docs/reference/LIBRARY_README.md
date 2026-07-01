@@ -1,10 +1,10 @@
-# MiniGPT Library Usage Guide
+# arclm Library Usage Guide
 
 This guide shows the real library workflow for:
 
-- training a new MiniGPT model from scratch
-- loading a trained/pretrained MiniGPT checkpoint for inference
-- fine-tuning a MiniGPT checkpoint on new data
+- training a new arclm model from scratch
+- loading a trained/pretrained arclm checkpoint for inference
+- fine-tuning a arclm checkpoint on new data
 - fine-tuning a model downloaded from another source, such as Kaggle
 
 The examples are intentionally small so you can run them locally first, then replace the demo data with your real dataset.
@@ -14,25 +14,25 @@ The examples are intentionally small so you can run them locally first, then rep
 From the repository root:
 
 ```bash
-pip install -e .
+pip install -e . # this installs the library in editable mode
 pip install -r requirements.txt
 ```
 
 After installation, prefer top-level imports:
 
 ```python
-from miniGPT import Config, prepare_data, build_model, build_trainer, load_model
+from arclm import Config, prepare_data, build_model, build_trainer, load_model
 ```
 
 If you run scripts directly inside this repository without installing the package, the older local import style also works:
 
 ```python
-from src.miniGPT import Config, prepare_data, build_model, build_trainer, load_model
+from src.arclm import Config, prepare_data, build_model, build_trainer, load_model
 ```
 
 ## Important Concepts
 
-MiniGPT checkpoints are PyTorch `.pth` files. A fully reusable checkpoint should contain:
+arclm checkpoints are PyTorch `.pth` files. A fully reusable checkpoint should contain:
 
 - model weights
 - optimizer state
@@ -53,14 +53,14 @@ General pretraining data:
 Machine learning is a field of artificial intelligence.
 Language models learn patterns from text.
 Transformers use attention to connect tokens in context.
-MiniGPT is a small educational GPT model.
+arclm is a small educational GPT model.
 Training from scratch starts with random weights.
 ```
 
 Fine-tuning data:
 
 ```text
-<qa> question: what is MiniGPT? answer: MiniGPT is a small GPT-style language model library. </qa>
+<qa> question: what is arclm? answer: arclm is a small GPT-style language model library. </qa>
 <qa> question: what is fine-tuning? answer: Fine-tuning adapts a pretrained model to new data. </qa>
 <qa> question: when should I freeze layers? answer: Freeze layers when the new dataset is small. </qa>
 ```
@@ -77,7 +77,7 @@ Save as `examples/train_from_scratch_real.py` or run it in a notebook cell.
 from pathlib import Path
 import torch
 
-from miniGPT import Config, Generator, build_model, build_trainer, prepare_data
+from arclm import Config, Generator, build_model, build_trainer, prepare_data
 
 
 project_dir = Path("runs/scratch_demo")
@@ -89,7 +89,7 @@ data_path.write_text(
     Machine learning is a field of artificial intelligence.
     Language models learn patterns from text.
     Transformers use attention to connect tokens in context.
-    MiniGPT is a small educational GPT model.
+    arclm is a small educational GPT model.
     Training from scratch starts with random weights.
     Fine-tuning adapts a pretrained model to a new dataset.
     """ * 50,
@@ -121,7 +121,7 @@ config = Config(
 data = prepare_data(config)
 config.vocab_size = data.vocab_size
 
-# Build a fresh randomly initialized MiniGPT model.
+# Build a fresh randomly initialized arclm model.
 model = build_model(config, vocab_size=data.vocab_size)
 trainer = build_trainer(model, config)
 
@@ -167,12 +167,12 @@ Notes:
 - Increase `max_vocab`, `block_size`, `embed_dim`, and `num_blocks` for serious training.
 - Use `tokenizer_type="sentencepiece"` for better subword handling on larger datasets.
 
-## Load A Pretrained MiniGPT Checkpoint
+## Load A Pretrained arclm Checkpoint
 
-Use `load_model()` when the checkpoint was saved in MiniGPT format with tokenizer data.
+Use `load_model()` when the checkpoint was saved in arclm format with tokenizer data.
 
 ```python
-from miniGPT import load_model
+from arclm import load_model
 
 loaded = load_model("runs/scratch_demo/scratch_model.pth")
 
@@ -194,7 +194,7 @@ print(text)
 - `loaded.config`: checkpoint config
 - `loaded.predict(...)`: quick generation method
 
-## Fine-Tune A Pretrained MiniGPT Checkpoint
+## Fine-Tune A Pretrained arclm Checkpoint
 
 Fine-tuning should reuse the checkpoint tokenizer. The helper below rebuilds a tokenizer object from the loaded checkpoint when needed.
 
@@ -202,7 +202,7 @@ Fine-tuning should reuse the checkpoint tokenizer. The helper below rebuilds a t
 from pathlib import Path
 import torch
 
-from miniGPT import Tokenizer, build_trainer, load_model, prepare_data
+from arclm import Tokenizer, build_trainer, load_model, prepare_data
 
 
 def tokenizer_from_loaded_model(loaded):
@@ -229,7 +229,7 @@ project_dir.mkdir(parents=True, exist_ok=True)
 fine_tune_data_path = project_dir / "qa_data.txt"
 fine_tune_data_path.write_text(
     """
-    <qa> question: what is MiniGPT? answer: MiniGPT is a small GPT-style language model library. </qa>
+    <qa> question: what is arclm? answer: arclm is a small GPT-style language model library. </qa>
     <qa> question: what is fine-tuning? answer: Fine-tuning adapts a pretrained model to new data. </qa>
     <qa> question: when should I freeze layers? answer: Freeze layers when the new dataset is small. </qa>
     """ * 80,
@@ -292,7 +292,7 @@ print(f"Saved fine-tuned checkpoint: {config.model_path}")
 After fine-tuning:
 
 ```python
-from miniGPT import load_model
+from arclm import load_model
 
 model = load_model("runs/finetune_demo/finetuned_model.pth")
 print(model.predict("<qa> question: what is fine-tuning? answer:", max_new_tokens=40))
@@ -311,9 +311,9 @@ external_models/
     README.md
 ```
 
-### Case 1: The Kaggle File Is A MiniGPT Checkpoint
+### Case 1: The Kaggle File Is A arclm Checkpoint
 
-If the downloaded `.pth` file contains MiniGPT keys such as `model_state_dict`, `config`, `stoi`, `itos`, and `vocab_size`, use the same fine-tuning flow as above:
+If the downloaded `.pth` file contains arclm keys such as `model_state_dict`, `config`, `stoi`, `itos`, and `vocab_size`, use the same fine-tuning flow as above:
 
 ```python
 loaded = load_model("external_models/kaggle_author_model/model.pth")
@@ -343,10 +343,10 @@ except TypeError:
 print(checkpoint.keys() if isinstance(checkpoint, dict) else type(checkpoint))
 ```
 
-If it has compatible MiniGPT weights under `model_state_dict`, `model`, or `state_dict`, you can load it manually:
+If it has compatible arclm weights under `model_state_dict`, `model`, or `state_dict`, you can load it manually:
 
 ```python
-from miniGPT import Config, build_model
+from arclm import Config, build_model
 
 config = Config(
     embed_dim=64,
@@ -372,15 +372,15 @@ model.load_state_dict(state_dict, strict=False)
 
 After that, create a compatible tokenizer and use `build_trainer()` to fine-tune. If the checkpoint does not include tokenizer information, you must know which tokenizer was used originally. A model trained with unknown token IDs cannot be reliably fine-tuned or used for text generation.
 
-### Case 3: The External Model Is Not MiniGPT
+### Case 3: The External Model Is Not arclm
 
-For Hugging Face causal language models, `UnifiedPipeline` can attempt to adapt weights into a MiniGPT model:
+For Hugging Face causal language models, `UnifiedPipeline` can attempt to adapt weights into a arclm model:
 
 ```python
 from pathlib import Path
 import torch
 
-from miniGPT import Config, StoppingCriteria, UnifiedPipeline, prepare_data
+from arclm import Config, StoppingCriteria, UnifiedPipeline, prepare_data
 
 
 project_dir = Path("runs/external_hf_demo")
@@ -523,7 +523,7 @@ Use `config.num_epochs`. The current `Config` class stores the training length a
 
 `ValueError: checkpoint is missing stoi or itos`
 
-The checkpoint does not contain tokenizer mappings. You need the original tokenizer files or a converted MiniGPT checkpoint.
+The checkpoint does not contain tokenizer mappings. You need the original tokenizer files or a converted arclm checkpoint.
 
 `size mismatch` while loading weights
 

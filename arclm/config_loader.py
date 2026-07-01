@@ -314,4 +314,4 @@ def create_example_configs():
     save_config_yaml(large_config, str(configs_dir / "large.yaml"))
     save_config_json(large_config, str(configs_dir / "large.json"))
     
-    print(f"✓ Example configs created in {configs_dir}/")
+    print(f"[OK] Example configs created in {configs_dir}/")

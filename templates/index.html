@@ -187,47 +187,62 @@ let latestOutput = "";
 let outputView = "preview";
 
 async function sendPrompt() {
-    const prompt = document.getElementById("prompt").value;
     const button = document.getElementById("submit");
+
+    let prompt = document.getElementById("prompt").value;
+
+    if (!prompt.trim()) {
+        return;
+    }
 
     try {
         button.disabled = true;
-        latestOutput = "Generating...";
+
+        latestOutput = prompt;
         renderOutput();
 
-        const response = await fetch("/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ prompt })
-        });
+        const MAX_TOKENS = 100;
 
-        const data = await response.json();
+        for (let i = 0; i < MAX_TOKENS; i++) {
 
-        if (data.error) {
-            latestOutput = "Error: " + data.error;
+            const response = await fetch("/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    prompt: prompt
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                latestOutput = "Error: " + data.error;
+                renderOutput();
+                return;
+            }
+
+            if (!data.token) {
+                break;
+            }
+
+            // Append the returned token
+            prompt += data.token;
+
+            latestOutput = prompt;
             renderOutput();
-            return;
         }
-
-        if (!data.result) {
-            latestOutput = "No result returned from backend";
-            renderOutput();
-            return;
-        }
-
-        latestOutput = data.result;
-        renderOutput();
 
     } catch (err) {
+
         latestOutput = "Fetch failed: " + err.message;
         renderOutput();
+
     } finally {
         button.disabled = false;
     }
 }
-
 function setOutputView(view) {
     outputView = view;
     document.getElementById("previewButton").classList.toggle("active", view === "preview");

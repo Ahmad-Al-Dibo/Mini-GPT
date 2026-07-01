@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Data preparation utilities for language-model training.
 """
@@ -147,15 +149,27 @@ def split_train_val(tokens, validation_split, block_size, seed=42):
 
 
 def load_tokenizer_from_checkpoint(checkpoint):
-    tok_data = checkpoint.get("tokenizer")
+    tok_data = checkpoint.get("tokenizer") or checkpoint.get("tokenizer_metadata")
 
     if tok_data is None:
         return None
 
     if tok_data["tokenizer_type"] == "word":
-        return Tokenizer.from_json(tok_data)
+        if tok_data.get("vocab") is not None:
+            return Tokenizer.from_json(tok_data)
+        vocab = checkpoint.get("vocab")
+        if vocab is None:
+            return None
+        tokenizer = Tokenizer(max_vocab=tok_data.get("max_vocab", len(vocab)))
+        tokenizer.vocab = vocab
+        tokenizer.vocab_size = len(vocab)
+        tokenizer.stoi = {token: idx for idx, token in enumerate(vocab)}
+        tokenizer.itos = {idx: token for idx, token in enumerate(vocab)}
+        return tokenizer
 
     if tok_data["tokenizer_type"] == "sentencepiece":
+        if "model_proto" in tok_data and isinstance(tok_data["model_proto"], bytes):
+            return SentencePieceTokenizer.from_checkpoint(tok_data)
         return SentencePieceTokenizer.from_json(tok_data)
 
     raise ValueError(
@@ -217,11 +231,21 @@ def prepare_data(config: Config, existing_tokenizer=None) -> DataBundle:
                     "sentencepiece_character_coverage",
                     1.0
                 ),
+                user_defined_symbols=getattr(
+                    config,
+                    "user_defined_symbols",
+                    None
+                ),
             )
 
         elif tokenizer_type == "word":
             tokenizer = Tokenizer(
-                max_vocab=config.max_vocab
+                max_vocab=config.max_vocab,
+                user_defined_symbols=getattr(
+                    config,
+                    "user_defined_symbols",
+                    None
+                ),
             )
 
         else:
